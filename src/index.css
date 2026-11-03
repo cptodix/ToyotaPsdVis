@@ -1,0 +1,68 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --font-display: 'Outfit', sans-serif;
+    --font-sans: 'Plus Jakarta Sans', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: #090d16;
+    color: #f1f5f9;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+  }
+
+  .font-mono {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Precision range sliders without backdrop-filter */
+input[type='range'].ths-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type='range'].ths-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: #1e293b;
+  border: 1px solid #334155;
+}
+
+input[type='range'].ths-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #f8fafc;
+  border: 2px solid currentColor;
+  margin-top: -5px;
+  transition: transform 140ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+input[type='range'].ths-slider:hover::-webkit-slider-thumb {
+  transform: scale(1.15);
+}
+
+input[type='range'].ths-slider:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

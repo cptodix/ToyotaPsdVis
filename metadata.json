@@ -1,0 +1,6 @@
+{
+  "name": "Toyota 5th Gen Hybrid PSD 3D Explorer",
+  "description": "Interactive 3D simulation of the 5th-generation Toyota Hybrid Power Split Device (THS V), featuring color-coded planetary gear kinematics, shaft speed and direction controls, all operating modes, and a live driving simulator with power meter and energy flow.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
