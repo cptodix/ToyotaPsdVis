@@ -22,36 +22,49 @@ import {
   WorkspaceTab,
 } from './types/hybrid';
 
-function createInitialSimulatorState(): PowertrainState {
-  const splitMode =
-    OPERATION_MODES.find((m) => m.id === OperationModeId.NORMAL_SPLIT) || OPERATION_MODES[4];
-  const base = buildStateFromMode(splitMode);
+function createInitialCityDriveState(controller: AutoDriveController): PowertrainState {
+  const stopSpec =
+    OPERATION_MODES.find((m) => m.id === OperationModeId.STOP) || OPERATION_MODES[0];
+  const base = buildStateFromMode(stopSpec);
+  const autoStatus = controller.setMode(AutoDriveMode.CITY, 0);
+
   return {
     ...base,
+    gear: GearPosition.D,
+    socPercent: 60,
     odometerKm: 0,
     totalFuelLiters: 0,
-    throttlePercent: 22,
+    throttlePercent: 0,
     brakePercent: 0,
     roadGradePercent: 0,
     evModeRequested: false,
+    autoDrive: autoStatus,
   };
 }
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(WorkspaceTab.SIMULATOR);
   const [dockCollapsed, setDockCollapsed] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [autoDriveMode, setAutoDriveMode] = useState<AutoDriveMode>(AutoDriveMode.OFF);
+  // Default on page load: Sound OFF, AutoDrive in CITY
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [autoDriveMode, setAutoDriveMode] = useState<AutoDriveMode>(AutoDriveMode.CITY);
   const [timeScale, setTimeScale] = useState<number>(1);
 
-  const initialState = createInitialSimulatorState();
+  const autoDriveRef = useRef<AutoDriveController | null>(null);
+  const initialStateRef = useRef<PowertrainState | null>(null);
+  if (!autoDriveRef.current || !initialStateRef.current) {
+    const ctrl = new AutoDriveController();
+    autoDriveRef.current = ctrl;
+    initialStateRef.current = createInitialCityDriveState(ctrl);
+  }
+
+  const initialState = initialStateRef.current;
   const [uiState, setUiState] = useState<PowertrainState>(initialState);
   const stateRef = useRef<PowertrainState>(initialState);
 
   const timeScaleRef = useRef<number>(timeScale);
   timeScaleRef.current = timeScale;
 
-  const autoDriveRef = useRef<AutoDriveController>(new AutoDriveController());
   const audioRef = useRef<HybridAudioEngine | null>(null);
   if (!audioRef.current) {
     audioRef.current = new HybridAudioEngine();
@@ -77,7 +90,7 @@ export default function App() {
 
   const uiSyncTimerRef = useRef(0);
 
-  // Unlock Web Audio on first user gesture and dispose cleanly on unmount
+  // Unlock Web Audio when user gestures if sound has been enabled, and dispose cleanly on unmount
   useEffect(() => {
     const audio = audioRef.current;
     const unlockAudio = () => {
@@ -93,8 +106,9 @@ export default function App() {
   }, []);
 
   const cancelAutoDriveOnManualOverride = useCallback(() => {
-    if (autoDriveRef.current.getMode() !== AutoDriveMode.OFF) {
-      autoDriveRef.current.setMode(AutoDriveMode.OFF, stateRef.current.speedKmh);
+    const ctrl = autoDriveRef.current;
+    if (ctrl && ctrl.getMode() !== AutoDriveMode.OFF) {
+      ctrl.setMode(AutoDriveMode.OFF, stateRef.current.speedKmh);
       setAutoDriveMode(AutoDriveMode.OFF);
       stateRef.current = {
         ...stateRef.current,
@@ -117,7 +131,10 @@ export default function App() {
   }, []);
 
   const handleSelectAutoDriveMode = useCallback((mode: AutoDriveMode) => {
-    const status = autoDriveRef.current.setMode(mode, stateRef.current.speedKmh);
+    const ctrl = autoDriveRef.current;
+    if (!ctrl) return;
+    const prevMode = ctrl.getMode();
+    const status = ctrl.setMode(mode, stateRef.current.speedKmh);
     setAutoDriveMode(mode);
 
     if (mode !== AutoDriveMode.OFF) {
@@ -125,6 +142,10 @@ export default function App() {
         driverInputsRef.current.gear !== GearPosition.D &&
         driverInputsRef.current.gear !== GearPosition.B
       ) {
+        driverInputsRef.current.gear = GearPosition.D;
+      }
+      if (prevMode === AutoDriveMode.MOUNTAIN && mode !== AutoDriveMode.MOUNTAIN) {
+        driverInputsRef.current.roadGradePercent = 0;
         driverInputsRef.current.gear = GearPosition.D;
       }
       driverInputsRef.current.sliderBrake = 0;
@@ -138,6 +159,7 @@ export default function App() {
       gear: driverInputsRef.current.gear,
       throttlePercent: driverInputsRef.current.sliderThrottle,
       brakePercent: driverInputsRef.current.sliderBrake,
+      roadGradePercent: driverInputsRef.current.roadGradePercent,
       autoDrive: status,
     };
     stateRef.current = updated;
@@ -147,6 +169,7 @@ export default function App() {
   const handleTickSimulation = useCallback((rawDt: number) => {
     const scale = timeScaleRef.current;
     const simDt = rawDt * scale;
+    const ctrl = autoDriveRef.current;
 
     if (activeTabRef.current === WorkspaceTab.SIMULATOR) {
       const inp = driverInputsRef.current;
@@ -154,11 +177,14 @@ export default function App() {
       let effectiveBrake: number;
       let autoStatus = IDLE_AUTODRIVE_STATUS;
 
-      if (autoDriveRef.current.getMode() !== AutoDriveMode.OFF) {
-        const act = autoDriveRef.current.step(stateRef.current, simDt);
+      if (ctrl && ctrl.getMode() !== AutoDriveMode.OFF) {
+        const act = ctrl.step(stateRef.current, simDt);
         inp.gear = act.gear;
         inp.sliderThrottle = act.throttlePercent;
         inp.sliderBrake = act.brakePercent;
+        if (act.roadGradePercent !== undefined) {
+          inp.roadGradePercent = act.roadGradePercent;
+        }
         effectiveThrottle = act.throttlePercent;
         effectiveBrake = act.brakePercent;
         autoStatus = act.status;
@@ -294,6 +320,10 @@ export default function App() {
   };
 
   const handleRoadGradeChange = (val: number) => {
+    const ctrl = autoDriveRef.current;
+    if (ctrl && ctrl.getMode() === AutoDriveMode.MOUNTAIN) {
+      ctrl.overrideMountainGrade(val);
+    }
     driverInputsRef.current.roadGradePercent = val;
     const updated = {
       ...stateRef.current,
@@ -333,11 +363,13 @@ export default function App() {
   };
 
   const handleResetSystem = () => {
-    autoDriveRef.current.setMode(AutoDriveMode.OFF, 0);
-    setAutoDriveMode(AutoDriveMode.OFF);
+    const ctrl = autoDriveRef.current;
+    if (!ctrl) return;
+
+    const fresh = createInitialCityDriveState(ctrl);
+    setAutoDriveMode(AutoDriveMode.CITY);
     setTimeScale(1);
 
-    const fresh = createInitialSimulatorState();
     driverInputsRef.current = {
       gear: fresh.gear,
       evModeRequested: fresh.evModeRequested,

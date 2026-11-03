@@ -239,10 +239,10 @@ export const Planetary2DInsert = forwardRef<HTMLElement, Planetary2DInsertProps>
       <aside
         ref={ref}
         aria-label="2D Planetary Gear Speed and Direction Insert"
-        className="pointer-events-auto absolute top-3 right-3.5 z-20 w-[202px] rounded-xl bg-slate-950/76 border border-slate-700/65 shadow-xl text-slate-200 select-none"
+        className="pointer-events-auto absolute top-3 right-3.5 z-20 w-[214px] rounded-xl bg-slate-950/78 border border-slate-700/65 shadow-xl text-slate-200 select-none"
       >
         <div className="flex items-center justify-between px-2.5 py-1 border-b border-slate-800/80">
-          <span className="font-display font-bold text-[11px] text-slate-100 tracking-tight whitespace-nowrap">
+          <span className="font-display font-bold text-xs text-slate-100 tracking-tight whitespace-nowrap">
             2D Planetary Gear
           </span>
           <button
@@ -390,9 +390,9 @@ export const Planetary2DInsert = forwardRef<HTMLElement, Planetary2DInsertProps>
             </div>
 
             {/* Compact Color-Coded RPM & Connection Legend */}
-            <div className="space-y-0.5 text-[10px]">
+            <div className="space-y-0.5 text-[10.5px]">
               <div className="flex items-center justify-between gap-1 px-1.5 py-0.5 rounded bg-slate-900/65 border border-amber-500/30">
-                <span className="inline-flex items-center gap-1 font-semibold text-amber-300 truncate">
+                <span className="inline-flex items-center gap-1 font-semibold text-amber-300 whitespace-nowrap">
                   <span
                     className="w-2 h-2 rounded-xs shrink-0"
                     style={{ backgroundColor: COMPONENT_COLORS.mg1.hex }}
@@ -401,14 +401,14 @@ export const Planetary2DInsert = forwardRef<HTMLElement, Planetary2DInsertProps>
                 </span>
                 <span className="font-mono whitespace-nowrap">
                   <span className="text-amber-200">{formatShortDir(state.mg1Rpm)}</span>{' '}
-                  <span className="text-slate-100 inline-block w-[42px] text-right">
+                  <span className="text-slate-100 inline-block w-[46px] text-right">
                     {Math.round(state.mg1Rpm)}
                   </span>
                 </span>
               </div>
 
               <div className="flex items-center justify-between gap-1 px-1.5 py-0.5 rounded bg-slate-900/65 border border-red-500/30">
-                <span className="inline-flex items-center gap-1 font-semibold text-red-300 truncate">
+                <span className="inline-flex items-center gap-1 font-semibold text-red-300 whitespace-nowrap">
                   <span
                     className="w-2 h-2 rounded-xs shrink-0"
                     style={{ backgroundColor: COMPONENT_COLORS.ice.hex }}
@@ -417,27 +417,27 @@ export const Planetary2DInsert = forwardRef<HTMLElement, Planetary2DInsertProps>
                 </span>
                 <span className="font-mono whitespace-nowrap">
                   <span className="text-red-200">{formatShortDir(state.iceRpm)}</span>{' '}
-                  <span className="text-slate-100 inline-block w-[42px] text-right">
+                  <span className="text-slate-100 inline-block w-[46px] text-right">
                     {Math.round(state.iceRpm)}
                   </span>
                 </span>
               </div>
 
               <div className="flex items-center justify-between gap-1 px-1.5 py-0.5 rounded bg-slate-900/65 border border-red-400/25">
-                <span className="inline-flex items-center gap-1 font-medium text-red-200 truncate">
+                <span className="inline-flex items-center gap-1 font-medium text-red-200 whitespace-nowrap">
                   <span className="w-2 h-2 rounded-xs shrink-0 bg-red-400" />
                   <span>Planets (Pin)</span>
                 </span>
                 <span className="font-mono whitespace-nowrap">
                   <span className="text-red-200">{formatShortDir(state.planetLocalRpm)}</span>{' '}
-                  <span className="text-slate-100 inline-block w-[42px] text-right">
+                  <span className="text-slate-100 inline-block w-[46px] text-right">
                     {Math.round(state.planetLocalRpm)}
                   </span>
                 </span>
               </div>
 
               <div className="flex items-center justify-between gap-1 px-1.5 py-0.5 rounded bg-slate-900/65 border border-cyan-500/30">
-                <span className="inline-flex items-center gap-1 font-semibold text-cyan-300 truncate">
+                <span className="inline-flex items-center gap-1 font-semibold text-cyan-300 whitespace-nowrap">
                   <span
                     className="w-2 h-2 rounded-xs shrink-0"
                     style={{ backgroundColor: COMPONENT_COLORS.mg2.hex }}
@@ -446,7 +446,7 @@ export const Planetary2DInsert = forwardRef<HTMLElement, Planetary2DInsertProps>
                 </span>
                 <span className="font-mono whitespace-nowrap">
                   <span className="text-cyan-200">{formatShortDir(state.ringRpm)}</span>{' '}
-                  <span className="text-slate-100 inline-block w-[42px] text-right">
+                  <span className="text-slate-100 inline-block w-[46px] text-right">
                     {Math.round(state.ringRpm)}
                   </span>
                 </span>

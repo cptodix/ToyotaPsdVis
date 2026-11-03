@@ -3,6 +3,7 @@ import { GearPosition, HsiZone, PowertrainState } from '../types/hybrid';
 
 interface HybridPowerMeterProps {
   state: PowertrainState;
+  className?: string;
 }
 
 function polarToCartesian(cx: number, cy: number, r: number, angleDeg: number) {
@@ -21,10 +22,10 @@ function describeArc(cx: number, cy: number, r: number, startAngle: number, endA
 }
 
 /**
- * Compact Translucent 5th-Gen Toyota Power Meter (CHG / ECO / PWR),
+ * Translucent 5th-Gen Toyota Power Meter (CHG / ECO / PWR),
  * Digital Speedometer, and Trip Computer (Odometer km, Avg km/L, Total Fuel L).
  */
-export const HybridPowerMeter: React.FC<HybridPowerMeterProps> = ({ state }) => {
+export const HybridPowerMeter: React.FC<HybridPowerMeterProps> = ({ state, className = '' }) => {
   const hsi = state.hsiValue;
   let needleDeg = -48;
   if (hsi < 0) {
@@ -78,55 +79,57 @@ export const HybridPowerMeter: React.FC<HybridPowerMeterProps> = ({ state }) => 
       : `${state.totalFuelLiters.toFixed(2)} L`;
 
   return (
-    <div className="flex flex-col justify-between px-2 py-1 rounded-lg bg-slate-900/45 border border-slate-700/45 min-[860px]:w-[214px] shrink-0">
-      <div className="flex items-center justify-center gap-2">
+    <div
+      className={`flex flex-col justify-between px-2 py-1.5 rounded-lg bg-slate-900/45 border border-slate-700/45 w-full min-w-0 overflow-hidden ${className}`}
+    >
+      <div className="flex items-center justify-center gap-2 min-w-0">
         <svg
           viewBox="0 0 172 90"
-          className="w-[104px] h-[55px] shrink-0 overflow-visible"
+          className="w-[106px] h-[58px] shrink-0 overflow-hidden"
           aria-label="Hybrid Power Meter and Speedometer"
         >
           <path
             d={describeArc(cx, cy, r, -115, 115)}
             fill="none"
             stroke="#1e293b"
-            strokeWidth="8.5"
+            strokeWidth="9"
           />
           <path
             d={describeArc(cx, cy, r, -115, -50)}
             fill="none"
             stroke="#06b6d4"
             strokeOpacity={hsi < -1 ? 0.95 : 0.35}
-            strokeWidth="8.5"
+            strokeWidth="9"
           />
           <path
             d={describeArc(cx, cy, r, -46, 10)}
             fill="none"
             stroke="#10b981"
             strokeOpacity={hsi > 1 && hsi <= 42 ? 0.95 : 0.35}
-            strokeWidth="8.5"
+            strokeWidth="9"
           />
           <path
             d={describeArc(cx, cy, r, 14, 66)}
             fill="none"
             stroke="#34d399"
             strokeOpacity={hsi > 42 && hsi <= 72 ? 0.95 : 0.32}
-            strokeWidth="8.5"
+            strokeWidth="9"
           />
           <path
             d={describeArc(cx, cy, r, 70, 115)}
             fill="none"
             stroke="#ef4444"
             strokeOpacity={hsi > 72 ? 0.98 : 0.35}
-            strokeWidth="8.5"
+            strokeWidth="9"
           />
 
-          <text x="12" y="76" className="fill-cyan-400 text-[8.5px] font-semibold">
+          <text x="10" y="77" className="fill-cyan-400 text-[9px] font-semibold">
             CHG
           </text>
-          <text x="54" y="13" className="fill-emerald-400 text-[8.5px] font-semibold">
+          <text x="53" y="13" className="fill-emerald-400 text-[9px] font-semibold">
             ECO
           </text>
-          <text x="140" y="76" className="fill-red-400 text-[8.5px] font-semibold">
+          <text x="139" y="77" className="fill-red-400 text-[9px] font-semibold">
             PWR
           </text>
 
@@ -136,7 +139,7 @@ export const HybridPowerMeter: React.FC<HybridPowerMeterProps> = ({ state }) => 
             x2={needleTip.x}
             y2={needleTip.y}
             stroke="#f8fafc"
-            strokeWidth="2.6"
+            strokeWidth="2.8"
             strokeLinecap="round"
           />
 
@@ -144,33 +147,33 @@ export const HybridPowerMeter: React.FC<HybridPowerMeterProps> = ({ state }) => 
             x={cx}
             y={cy - 10}
             textAnchor="middle"
-            className="fill-slate-50 font-mono text-[23px] font-bold"
+            className="fill-slate-50 font-mono text-[24px] font-bold"
           >
             {state.speedKmh < -0.5 ? `-${absKmh}` : absKmh}
           </text>
           <text
             x={cx}
-            y={cy + 3}
+            y={cy + 4}
             textAnchor="middle"
-            className="fill-slate-400 text-[9px] font-medium"
+            className="fill-slate-400 text-[9.5px] font-medium"
           >
             km/h
           </text>
         </svg>
 
-        <div className="flex flex-col justify-center gap-0.5 min-w-[52px]">
-          <div className="flex items-center justify-between text-[10px]">
+        <div className="flex flex-col justify-center gap-0.5 min-w-[58px]">
+          <div className="flex items-center justify-between text-[11px]">
             <span className="text-slate-400">Gear</span>
             <span className="font-mono font-bold text-slate-100">{state.gear}</span>
           </div>
           <div
-            className={`text-[10px] font-semibold whitespace-nowrap ${
+            className={`text-[11px] font-semibold whitespace-nowrap ${
               state.evIndicatorOn ? 'text-emerald-400' : 'text-amber-400'
             }`}
           >
             {zoneLabel}
           </div>
-          <div className="font-mono text-[10px] text-slate-300 whitespace-nowrap">
+          <div className="font-mono text-[11px] text-slate-200 whitespace-nowrap">
             {state.flows.counterToWheelKw >= 0 ? '+' : ''}
             {Math.round(state.flows.counterToWheelKw)} kW
           </div>
@@ -178,10 +181,10 @@ export const HybridPowerMeter: React.FC<HybridPowerMeterProps> = ({ state }) => 
       </div>
 
       {/* Trip Odometer (km), Avg Fuel Consumption (km/L) & Total Fuel Consumed (L) */}
-      <div className="grid grid-cols-3 gap-1 pt-1 mt-0.5 border-t border-slate-800/85 text-center font-mono">
+      <div className="grid grid-cols-3 gap-1 pt-1.5 mt-1 border-t border-slate-800/85 text-center font-mono">
         <div className="min-w-0" title="Trip Odometer (resets on Reset)">
-          <div className="text-[8px] font-sans font-medium text-slate-400 leading-none">ODO</div>
-          <div className="text-[9.5px] font-semibold text-slate-100 whitespace-nowrap mt-0.5">
+          <div className="text-[9px] font-sans font-medium text-slate-400 leading-none">ODO</div>
+          <div className="text-[10.5px] font-semibold text-slate-100 whitespace-nowrap mt-0.5">
             {odoText}
           </div>
         </div>
@@ -189,14 +192,14 @@ export const HybridPowerMeter: React.FC<HybridPowerMeterProps> = ({ state }) => 
           className="min-w-0 border-x border-slate-800/80 px-0.5"
           title="Average Fuel Consumption in km/L (resets on Reset)"
         >
-          <div className="text-[8px] font-sans font-medium text-slate-400 leading-none">AVG</div>
-          <div className="text-[9.5px] font-semibold text-emerald-300 whitespace-nowrap mt-0.5">
+          <div className="text-[9px] font-sans font-medium text-slate-400 leading-none">AVG</div>
+          <div className="text-[10.5px] font-semibold text-emerald-300 whitespace-nowrap mt-0.5">
             {avgText}
           </div>
         </div>
         <div className="min-w-0" title="Total Gasoline Consumed in Liters (resets on Reset)">
-          <div className="text-[8px] font-sans font-medium text-slate-400 leading-none">FUEL</div>
-          <div className="text-[9.5px] font-semibold text-amber-300 whitespace-nowrap mt-0.5">
+          <div className="text-[9px] font-sans font-medium text-slate-400 leading-none">FUEL</div>
+          <div className="text-[10.5px] font-semibold text-amber-300 whitespace-nowrap mt-0.5">
             {fuelText}
           </div>
         </div>

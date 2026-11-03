@@ -65,11 +65,11 @@ const _tagLayout: [
   TagLayoutItem,
   TagLayoutItem,
 ] = [
-  { rawX: 0, rawY: 0, x: 0, y: 0, w: 164, h: 48, visible: false },
-  { rawX: 0, rawY: 0, x: 0, y: 0, w: 174, h: 60, visible: false },
-  { rawX: 0, rawY: 0, x: 0, y: 0, w: 164, h: 48, visible: false },
-  { rawX: 0, rawY: 0, x: 0, y: 0, w: 164, h: 48, visible: false },
-  { rawX: 0, rawY: 0, x: 0, y: 0, w: 168, h: 64, visible: false },
+  { rawX: 0, rawY: 0, x: 0, y: 0, w: 174, h: 50, visible: false },
+  { rawX: 0, rawY: 0, x: 0, y: 0, w: 184, h: 64, visible: false },
+  { rawX: 0, rawY: 0, x: 0, y: 0, w: 174, h: 50, visible: false },
+  { rawX: 0, rawY: 0, x: 0, y: 0, w: 174, h: 50, visible: false },
+  { rawX: 0, rawY: 0, x: 0, y: 0, w: 176, h: 68, visible: false },
 ];
 
 export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
@@ -599,9 +599,9 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
       {/* Top-Left Title + Complete 5-Component Color Key */}
       <div
         ref={topBarRef}
-        className="pointer-events-none absolute top-3 left-3.5 z-10 inline-flex w-fit max-w-[calc(100vw-232px)] flex-wrap items-center gap-x-2.5 gap-y-1 px-2.5 py-1 rounded-lg bg-slate-950/65 border border-slate-800/75 text-[10.5px] text-slate-300"
+        className="pointer-events-none absolute top-3 left-3.5 z-10 inline-flex w-fit max-w-[calc(100vw-232px)] flex-wrap items-center gap-x-2.5 gap-y-1 px-2.5 py-1 rounded-lg bg-slate-950/68 border border-slate-800/75 text-[11.5px] text-slate-300"
       >
-        <span className="font-display font-bold text-[11.5px] text-slate-100 whitespace-nowrap">
+        <span className="font-display font-bold text-xs text-slate-100 whitespace-nowrap">
           5th-Gen Toyota PSD
         </span>
         <span className="text-slate-600 hidden sm:inline">·</span>
@@ -692,13 +692,13 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
         {/* 1. ICE · Carrier & Planets */}
         <div
           ref={iceTagRef}
-          className="absolute top-0 left-0 w-[162px] px-2.5 py-1 rounded-lg bg-slate-950/72 border border-red-500/45 shadow-md"
+          className="absolute top-0 left-0 w-[172px] px-2.5 py-1 rounded-lg bg-slate-950/74 border border-red-500/45 shadow-md"
         >
-          <div className="flex items-center gap-1.5 text-[10.5px] font-semibold text-red-400 whitespace-nowrap">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-red-400 whitespace-nowrap">
             <span className="inline-block w-2 h-2 rounded-xs bg-red-500" />
             <span>ICE · Carrier &amp; Planets</span>
           </div>
-          <div className="flex items-center justify-between mt-0.5 text-[11px] font-mono text-slate-100 whitespace-nowrap">
+          <div className="flex items-center justify-between mt-0.5 text-[11.5px] font-mono text-slate-100 whitespace-nowrap">
             <span ref={iceValRef}>0 RPM</span>
             <span ref={iceDirRef} className="text-red-300">
               ■ STOP
@@ -709,18 +709,18 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
         {/* 2. HV Battery · PCU */}
         <div
           ref={battTagRef}
-          className="absolute top-0 left-0 w-[172px] px-2.5 py-1 rounded-lg bg-slate-950/72 border border-emerald-500/50 shadow-md"
+          className="absolute top-0 left-0 w-[182px] px-2.5 py-1 rounded-lg bg-slate-950/74 border border-emerald-500/50 shadow-md"
         >
-          <div className="flex items-center justify-between gap-1 text-[10.5px] font-semibold text-emerald-400 whitespace-nowrap">
+          <div className="flex items-center justify-between gap-1 text-[11px] font-semibold text-emerald-400 whitespace-nowrap">
             <span className="inline-flex items-center gap-1.5">
               <span className="inline-block w-2 h-2 rounded-xs bg-emerald-500" />
               <span>HV Battery · PCU</span>
             </span>
             <span ref={battSocRef} className="font-mono text-emerald-200">
-              SoC 64%
+              SoC 60%
             </span>
           </div>
-          <div className="flex items-center justify-between mt-0.5 text-[10.5px] font-mono whitespace-nowrap">
+          <div className="flex items-center justify-between mt-0.5 text-[11px] font-mono whitespace-nowrap">
             <span ref={battStatusRef} className="text-slate-300">
               ■ STANDBY
             </span>
@@ -729,7 +729,7 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
             <div
               ref={battBarRef}
               className="h-full bg-emerald-400 rounded-full"
-              style={{ width: '64%' }}
+              style={{ width: '60%' }}
             />
           </div>
         </div>
@@ -737,13 +737,13 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
         {/* 3. MG1 · Sun Gear */}
         <div
           ref={mg1TagRef}
-          className="absolute top-0 left-0 w-[162px] px-2.5 py-1 rounded-lg bg-slate-950/72 border border-amber-500/45 shadow-md"
+          className="absolute top-0 left-0 w-[172px] px-2.5 py-1 rounded-lg bg-slate-950/74 border border-amber-500/45 shadow-md"
         >
-          <div className="flex items-center gap-1.5 text-[10.5px] font-semibold text-amber-400 whitespace-nowrap">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-400 whitespace-nowrap">
             <span className="inline-block w-2 h-2 rounded-xs bg-amber-500" />
             <span>MG1 · Sun Gear</span>
           </div>
-          <div className="flex items-center justify-between mt-0.5 text-[11px] font-mono text-slate-100 whitespace-nowrap">
+          <div className="flex items-center justify-between mt-0.5 text-[11.5px] font-mono text-slate-100 whitespace-nowrap">
             <span ref={mg1ValRef}>0 RPM</span>
             <span ref={mg1DirRef} className="text-amber-300">
               ■ STOP
@@ -754,13 +754,13 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
         {/* 4. MG2 · Ring & Counter */}
         <div
           ref={mg2TagRef}
-          className="absolute top-0 left-0 w-[162px] px-2.5 py-1 rounded-lg bg-slate-950/72 border border-cyan-500/45 shadow-md"
+          className="absolute top-0 left-0 w-[172px] px-2.5 py-1 rounded-lg bg-slate-950/74 border border-cyan-500/45 shadow-md"
         >
-          <div className="flex items-center gap-1.5 text-[10.5px] font-semibold text-cyan-400 whitespace-nowrap">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-cyan-400 whitespace-nowrap">
             <span className="inline-block w-2 h-2 rounded-xs bg-cyan-500" />
             <span>MG2 · Ring &amp; Gears</span>
           </div>
-          <div className="flex items-center justify-between mt-0.5 text-[11px] font-mono text-slate-100 whitespace-nowrap">
+          <div className="flex items-center justify-between mt-0.5 text-[11.5px] font-mono text-slate-100 whitespace-nowrap">
             <span ref={mg2ValRef}>0 RPM</span>
             <span ref={mg2DirRef} className="text-cyan-300">
               ■ STOP
@@ -771,19 +771,19 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
         {/* 5. Drive Wheel · Final Axle */}
         <div
           ref={wheelTagRef}
-          className="absolute top-0 left-0 w-[166px] px-2.5 py-1 rounded-lg bg-slate-950/72 border border-violet-500/45 shadow-md"
+          className="absolute top-0 left-0 w-[174px] px-2.5 py-1 rounded-lg bg-slate-950/74 border border-violet-500/45 shadow-md"
         >
-          <div className="flex items-center gap-1.5 text-[10.5px] font-semibold text-violet-400 whitespace-nowrap">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-violet-400 whitespace-nowrap">
             <span className="inline-block w-2 h-2 rounded-xs bg-violet-500" />
             <span>Wheel · Final Axle</span>
           </div>
-          <div className="flex items-center justify-between mt-0.5 text-[11px] font-mono text-slate-100 whitespace-nowrap">
+          <div className="flex items-center justify-between mt-0.5 text-[11.5px] font-mono text-slate-100 whitespace-nowrap">
             <span ref={wheelRpmRef}>0 RPM</span>
             <span ref={wheelTurnRef} className="text-violet-300">
               ■ STOP
             </span>
           </div>
-          <div className="flex items-center justify-between text-[11px] font-mono text-violet-200 whitespace-nowrap">
+          <div className="flex items-center justify-between text-[11.5px] font-mono text-violet-200 whitespace-nowrap">
             <span ref={wheelKmhRef}>0 km/h</span>
             <span ref={wheelTravelRef} className="font-semibold text-violet-300">
               STOP

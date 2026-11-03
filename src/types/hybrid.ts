@@ -65,6 +65,8 @@ export interface PowerFlowsKw {
 }
 
 export interface PropulsionSplitMetrics {
+  combinedHp: number;
+  combinedKw: number;
   icePercent: number;
   evPercent: number;
   iceHp: number;
@@ -86,6 +88,7 @@ export enum AutoDriveMode {
   OFF = 'OFF',
   CITY = 'CITY',
   HIGHWAY = 'HIGHWAY',
+  MOUNTAIN = 'MOUNTAIN',
 }
 
 export enum AutoDriveEventKind {
@@ -100,6 +103,10 @@ export enum AutoDriveEventKind {
   HIGHWAY_CRUISE = 'HIGHWAY_CRUISE',
   TRAFFIC_SLOWDOWN = 'TRAFFIC_SLOWDOWN',
   OVERTAKE = 'OVERTAKE',
+  COUNTRYSIDE_WINDING = 'COUNTRYSIDE_WINDING',
+  MOUNTAIN_CLIMB = 'MOUNTAIN_CLIMB',
+  SUMMIT_CREST = 'SUMMIT_CREST',
+  MOUNTAIN_DESCENT = 'MOUNTAIN_DESCENT',
 }
 
 export interface AutoDriveStatus {

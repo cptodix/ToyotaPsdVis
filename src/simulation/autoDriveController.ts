@@ -10,6 +10,7 @@ export interface AutoDriveActuation {
   gear: GearPosition;
   throttlePercent: number;
   brakePercent: number;
+  roadGradePercent?: number;
   status: AutoDriveStatus;
 }
 
@@ -33,11 +34,14 @@ export const IDLE_AUTODRIVE_STATUS: AutoDriveStatus = {
 };
 
 /**
- * Realistic Traffic & Scenario AutoDrive Controller
+ * Realistic Traffic & Terrain AutoDrive Controller
  * - CITY: Random traffic lights (red approach + stationary wait + green launch),
  *         medium-to-heavy urban traffic waves, and occasional multi-stop traffic jams.
  * - HIGHWAY: On-ramp merge, mostly stable high-speed cruising (104–116 km/h),
  *            occasional slower-traffic slowdowns, and occasional passing overtakes.
+ * - MOUNTAIN: Countryside mountainous road with frequent steep climbs (+11% to +19%),
+ *             scenic pass summits, rolling hills, and steep descents (-10% to -18%)
+ *             with automatic B-range fuel-cut engine braking & regen recovery.
  */
 export class AutoDriveController {
   private mode: AutoDriveMode = AutoDriveMode.OFF;
@@ -51,12 +55,27 @@ export class AutoDriveController {
   private jamStopsRemaining = 0;
   private jamMoving = true;
 
+  // Mountain road dynamic grade state
+  private mountainBaseGrade = 0;
+  private smoothMountainGrade = 0;
+
   // Smooth virtual foot pedals
   private smoothThrottle = 0;
   private smoothBrake = 0;
 
+  constructor(initialMode: AutoDriveMode = AutoDriveMode.OFF, initialSpeedKmh = 0) {
+    if (initialMode !== AutoDriveMode.OFF) {
+      this.setMode(initialMode, initialSpeedKmh);
+    }
+  }
+
   public getMode(): AutoDriveMode {
     return this.mode;
+  }
+
+  public overrideMountainGrade(gradePercent: number): void {
+    this.mountainBaseGrade = gradePercent;
+    this.smoothMountainGrade = gradePercent;
   }
 
   public setMode(nextMode: AutoDriveMode, currentSpeedKmh: number): AutoDriveStatus {
@@ -84,9 +103,12 @@ export class AutoDriveController {
       } else {
         this.enterHighwayPhase(AutoDriveEventKind.HIGHWAY_CRUISE);
       }
+    } else if (nextMode === AutoDriveMode.MOUNTAIN) {
+      this.smoothMountainGrade = 6;
+      this.enterMountainPhase(AutoDriveEventKind.MOUNTAIN_CLIMB);
     }
 
-    return this.buildStatus(currentSpeedKmh);
+    return this.buildStatus(currentSpeedKmh, this.smoothMountainGrade, GearPosition.D);
   }
 
   private enterCityPhase(kind: AutoDriveEventKind): void {
@@ -111,7 +133,7 @@ export class AutoDriveController {
 
       case AutoDriveEventKind.RED_LIGHT_BRAKE:
         this.baseTargetKmh = 0;
-        this.phaseDurationSec = 14.0; // Transitions to RED_LIGHT_WAIT as soon as speed reaches ~0
+        this.phaseDurationSec = 14.0;
         break;
 
       case AutoDriveEventKind.RED_LIGHT_WAIT:
@@ -152,14 +174,12 @@ export class AutoDriveController {
 
     if (this.phase === AutoDriveEventKind.TRAFFIC_JAM) {
       if (this.jamMoving) {
-        // Stop behind crawling queue
         this.jamMoving = false;
         this.baseTargetKmh = 0;
         this.phaseTimerSec = 0;
         this.phaseDurationSec = randRange(2.2, 4.2);
         return;
       } else if (this.jamStopsRemaining > 1) {
-        // Inch forward again in traffic jam
         this.jamStopsRemaining -= 1;
         this.jamMoving = true;
         this.baseTargetKmh = Math.round(randRange(8, 17));
@@ -167,7 +187,6 @@ export class AutoDriveController {
         this.phaseDurationSec = randRange(3.2, 5.2);
         return;
       } else {
-        // Jam clears out
         this.enterCityPhase(AutoDriveEventKind.GREEN_LAUNCH);
         return;
       }
@@ -183,7 +202,6 @@ export class AutoDriveController {
       return;
     }
 
-    // From URBAN_FLOW or HEAVY_TRAFFIC: random traffic light, heavy traffic, or occasional jam
     const roll = Math.random();
     if (roll < 0.36) {
       this.enterCityPhase(AutoDriveEventKind.RED_LIGHT_BRAKE);
@@ -196,7 +214,6 @@ export class AutoDriveController {
     } else if (roll < 0.8) {
       this.enterCityPhase(AutoDriveEventKind.TRAFFIC_JAM);
     } else {
-      // Speed limit / next block flow shift
       this.enterCityPhase(AutoDriveEventKind.URBAN_FLOW);
     }
   }
@@ -208,7 +225,7 @@ export class AutoDriveController {
     switch (kind) {
       case AutoDriveEventKind.HIGHWAY_MERGE:
         this.baseTargetKmh = Math.round(randRange(104, 114));
-        this.phaseDurationSec = 18.0; // Exits once up to highway cruise speed
+        this.phaseDurationSec = 18.0;
         break;
 
       case AutoDriveEventKind.HIGHWAY_CRUISE:
@@ -244,13 +261,11 @@ export class AutoDriveController {
     if (this.phaseTimerSec < this.phaseDurationSec) return;
 
     if (this.phase === AutoDriveEventKind.OVERTAKE) {
-      // Completed pass — settle back into stable cruise
       this.enterHighwayPhase(AutoDriveEventKind.HIGHWAY_CRUISE);
       return;
     }
 
     if (this.phase === AutoDriveEventKind.TRAFFIC_SLOWDOWN) {
-      // After slowing behind slower vehicle, either overtake it or resume open lane cruise
       if (Math.random() < 0.58) {
         this.enterHighwayPhase(AutoDriveEventKind.OVERTAKE);
       } else {
@@ -259,7 +274,6 @@ export class AutoDriveController {
       return;
     }
 
-    // From HIGHWAY_CRUISE: mostly stable cruise, sometimes slowdown, sometimes overtake
     const roll = Math.random();
     if (roll < 0.44) {
       this.enterHighwayPhase(AutoDriveEventKind.HIGHWAY_CRUISE);
@@ -267,6 +281,72 @@ export class AutoDriveController {
       this.enterHighwayPhase(AutoDriveEventKind.TRAFFIC_SLOWDOWN);
     } else {
       this.enterHighwayPhase(AutoDriveEventKind.OVERTAKE);
+    }
+  }
+
+  private enterMountainPhase(kind: AutoDriveEventKind): void {
+    this.phase = kind;
+    this.phaseTimerSec = 0;
+
+    switch (kind) {
+      case AutoDriveEventKind.MOUNTAIN_CLIMB:
+        this.mountainBaseGrade = Math.round(randRange(11, 19));
+        this.baseTargetKmh = Math.round(randRange(50, 64));
+        this.phaseDurationSec = randRange(8.0, 12.0);
+        break;
+
+      case AutoDriveEventKind.SUMMIT_CREST:
+        this.mountainBaseGrade = Math.round(randRange(-1, 2));
+        this.baseTargetKmh = Math.round(randRange(56, 68));
+        this.phaseDurationSec = randRange(4.5, 6.8);
+        break;
+
+      case AutoDriveEventKind.MOUNTAIN_DESCENT:
+        this.mountainBaseGrade = -Math.round(randRange(10, 18));
+        this.baseTargetKmh = Math.round(randRange(48, 60));
+        this.phaseDurationSec = randRange(8.5, 12.5);
+        break;
+
+      case AutoDriveEventKind.COUNTRYSIDE_WINDING:
+      default:
+        this.mountainBaseGrade = Math.round(randRange(3, 8)) * (Math.random() < 0.65 ? 1 : -1);
+        this.baseTargetKmh = Math.round(randRange(62, 74));
+        this.phaseDurationSec = randRange(6.5, 9.5);
+        break;
+    }
+  }
+
+  private advanceMountainStateMachine(): void {
+    if (this.phaseTimerSec < this.phaseDurationSec) return;
+
+    if (this.phase === AutoDriveEventKind.MOUNTAIN_CLIMB) {
+      if (Math.random() < 0.68) {
+        this.enterMountainPhase(AutoDriveEventKind.SUMMIT_CREST);
+      } else {
+        this.enterMountainPhase(AutoDriveEventKind.MOUNTAIN_DESCENT);
+      }
+      return;
+    }
+
+    if (this.phase === AutoDriveEventKind.SUMMIT_CREST) {
+      this.enterMountainPhase(AutoDriveEventKind.MOUNTAIN_DESCENT);
+      return;
+    }
+
+    if (this.phase === AutoDriveEventKind.MOUNTAIN_DESCENT) {
+      if (Math.random() < 0.55) {
+        this.enterMountainPhase(AutoDriveEventKind.COUNTRYSIDE_WINDING);
+      } else {
+        this.enterMountainPhase(AutoDriveEventKind.MOUNTAIN_CLIMB);
+      }
+      return;
+    }
+
+    // From COUNTRYSIDE_WINDING: frequent climbs & descents
+    if (Math.random() < 0.65) {
+      this.enterMountainPhase(AutoDriveEventKind.MOUNTAIN_CLIMB);
+    } else {
+      this.enterMountainPhase(AutoDriveEventKind.MOUNTAIN_DESCENT);
     }
   }
 
@@ -280,12 +360,37 @@ export class AutoDriveController {
     if (this.phase === AutoDriveEventKind.HIGHWAY_CRUISE) {
       return this.baseTargetKmh + Math.sin(this.waveTimeSec * 0.42) * 1.8;
     }
+    if (
+      this.phase === AutoDriveEventKind.COUNTRYSIDE_WINDING ||
+      this.phase === AutoDriveEventKind.MOUNTAIN_CLIMB
+    ) {
+      return this.baseTargetKmh + Math.sin(this.waveTimeSec * 0.55) * 2.8;
+    }
     return this.baseTargetKmh;
   }
 
-  private buildStatus(currentSpeedKmh: number): AutoDriveStatus {
+  private computeTargetMountainGrade(): number {
+    if (this.phase === AutoDriveEventKind.COUNTRYSIDE_WINDING) {
+      return this.mountainBaseGrade + Math.sin(this.waveTimeSec * 0.75) * 3.2;
+    }
+    if (
+      this.phase === AutoDriveEventKind.MOUNTAIN_CLIMB ||
+      this.phase === AutoDriveEventKind.MOUNTAIN_DESCENT
+    ) {
+      return this.mountainBaseGrade + Math.sin(this.waveTimeSec * 0.6) * 1.6;
+    }
+    return this.mountainBaseGrade;
+  }
+
+  private buildStatus(
+    currentSpeedKmh: number,
+    activeGradePercent: number,
+    activeGear: GearPosition
+  ): AutoDriveStatus {
     const targetRounded = Math.round(this.computeDynamicTargetSpeed());
     const remSec = Math.max(1, Math.ceil(this.phaseDurationSec - this.phaseTimerSec));
+    const gRound = Math.round(activeGradePercent);
+    const gradeStr = gRound > 0 ? `+${gRound}%` : `${gRound}%`;
 
     switch (this.phase) {
       case AutoDriveEventKind.GREEN_LAUNCH:
@@ -382,6 +487,45 @@ export class AutoDriveController {
           targetSpeedKmh: targetRounded,
         };
 
+      case AutoDriveEventKind.MOUNTAIN_CLIMB:
+        return {
+          mode: this.mode,
+          eventKind: this.phase,
+          eventBadge: `CLIMB ${gradeStr}`,
+          contextText: `Steep mountain ascent (${gradeStr} grade) — M20A-FXS + MG2 climbing switchbacks at ${targetRounded} km/h`,
+          targetSpeedKmh: targetRounded,
+        };
+
+      case AutoDriveEventKind.SUMMIT_CREST:
+        return {
+          mode: this.mode,
+          eventKind: this.phase,
+          eventBadge: 'PASS SUMMIT',
+          contextText: `Cresting mountain ridge (${gradeStr} grade) — easing throttle into EV glide / Atkinson cruise at ${targetRounded} km/h`,
+          targetSpeedKmh: targetRounded,
+        };
+
+      case AutoDriveEventKind.MOUNTAIN_DESCENT:
+        return {
+          mode: this.mode,
+          eventKind: this.phase,
+          eventBadge: `DESCENT ${gradeStr}`,
+          contextText:
+            activeGear === GearPosition.B
+              ? `Steep mountain descent (${gradeStr} grade) — B-range fuel-cut engine pumping + MG2 regen holding ${targetRounded} km/h`
+              : `Mountain downhill (${gradeStr} grade) — zero-fuel MG2 regenerative braking holding ${targetRounded} km/h`,
+          targetSpeedKmh: targetRounded,
+        };
+
+      case AutoDriveEventKind.COUNTRYSIDE_WINDING:
+        return {
+          mode: this.mode,
+          eventKind: this.phase,
+          eventBadge: `HILLS ${gradeStr}`,
+          contextText: `Winding countryside road (${gradeStr} grade) — rolling valley curves at ${targetRounded} km/h`,
+          targetSpeedKmh: targetRounded,
+        };
+
       default:
         return { ...IDLE_AUTODRIVE_STATUS };
     }
@@ -400,35 +544,51 @@ export class AutoDriveController {
     this.phaseTimerSec += dt;
     this.waveTimeSec += dt;
 
-    if (this.mode === AutoDriveMode.CITY) {
-      this.advanceCityStateMachine(state.speedKmh);
-    } else {
-      this.advanceHighwayStateMachine(state.speedKmh);
-    }
-
-    // Ensure forward driving gear (preserve B if user explicitly shifted into B to test downhill engine braking!)
-    const targetGear =
+    let activeGrade = state.roadGradePercent;
+    let targetGear: GearPosition =
       state.gear === GearPosition.D || state.gear === GearPosition.B
         ? state.gear
         : GearPosition.D;
+
+    if (this.mode === AutoDriveMode.CITY) {
+      this.advanceCityStateMachine(state.speedKmh);
+    } else if (this.mode === AutoDriveMode.HIGHWAY) {
+      this.advanceHighwayStateMachine(state.speedKmh);
+    } else if (this.mode === AutoDriveMode.MOUNTAIN) {
+      this.advanceMountainStateMachine();
+      const desiredGrade = this.computeTargetMountainGrade();
+      this.smoothMountainGrade = approach(this.smoothMountainGrade, desiredGrade, 4.2, dt);
+      activeGrade = Math.round(this.smoothMountainGrade);
+
+      // Automatically shift to B-range on steep descents (<= -10%) and return to D on climbs/flats
+      if (this.phase === AutoDriveEventKind.MOUNTAIN_DESCENT && activeGrade <= -10) {
+        targetGear = GearPosition.B;
+      } else if (activeGrade >= -5) {
+        targetGear = GearPosition.D;
+      }
+    }
 
     const targetKmh = this.computeDynamicTargetSpeed();
     const speedErrKmh = targetKmh - state.speedKmh;
 
     // Feedforward throttle/brake bias for road inclination
-    const grade = state.roadGradePercent;
-    const uphillThrottleBias = grade > 0 ? grade * 1.45 : 0;
-    const downhillBrakeBias = grade < -2 ? Math.abs(grade) * 1.15 : 0;
+    const uphillThrottleBias = activeGrade > 0 ? activeGrade * 1.65 : 0;
+    const downhillBrakeBias = activeGrade < -2 ? Math.abs(activeGrade) * 1.25 : 0;
 
     let cmdThrottle = 0;
     let cmdBrake = 0;
 
-    if (this.phase === AutoDriveEventKind.RED_LIGHT_WAIT || (targetKmh === 0 && Math.abs(state.speedKmh) < 0.7)) {
+    if (
+      this.phase === AutoDriveEventKind.RED_LIGHT_WAIT ||
+      (targetKmh === 0 && Math.abs(state.speedKmh) < 0.7)
+    ) {
       cmdThrottle = 0;
-      cmdBrake = Math.min(85, 28 + Math.abs(grade) * 1.4);
-    } else if (this.phase === AutoDriveEventKind.RED_LIGHT_BRAKE || (targetKmh === 0 && state.speedKmh >= 0.7)) {
+      cmdBrake = Math.min(85, 28 + Math.abs(activeGrade) * 1.4);
+    } else if (
+      this.phase === AutoDriveEventKind.RED_LIGHT_BRAKE ||
+      (targetKmh === 0 && state.speedKmh >= 0.7)
+    ) {
       cmdThrottle = 0;
-      // Progressive smooth regenerative stop
       const baseStopBrake = Math.min(48, 12 + state.speedKmh * 0.52);
       cmdBrake = Math.min(85, baseStopBrake + downhillBrakeBias);
     } else if (this.phase === AutoDriveEventKind.OVERTAKE) {
@@ -447,38 +607,41 @@ export class AutoDriveController {
       }
       cmdBrake = 0;
     } else {
-      // Smooth urban / highway speed-tracking driver matched to audited road load
       const aeroCruiseFeedforward =
         targetKmh > 6
           ? 3.2 + 0.015 * targetKmh + 0.00112 * targetKmh * targetKmh
           : 1.5;
 
-      if (speedErrKmh >= -3.6) {
+      const netFeedforward =
+        aeroCruiseFeedforward + uphillThrottleBias - downhillBrakeBias * 0.85;
+
+      if (speedErrKmh >= -3.6 && netFeedforward + speedErrKmh * 1.65 > 0.5) {
         const kp = this.mode === AutoDriveMode.CITY ? 1.55 : 1.85;
         const maxPhaseThrottle =
           this.phase === AutoDriveEventKind.TRAFFIC_JAM
             ? 24
             : this.phase === AutoDriveEventKind.GREEN_LAUNCH
               ? 48
-              : 74;
+              : 86;
         cmdThrottle = Math.max(
           0,
-          Math.min(
-            maxPhaseThrottle + uphillThrottleBias,
-            aeroCruiseFeedforward + speedErrKmh * kp + uphillThrottleBias - downhillBrakeBias * 0.7
-          )
+          Math.min(maxPhaseThrottle + uphillThrottleBias * 0.7, netFeedforward + speedErrKmh * kp)
         );
         cmdThrottle = Math.min(98, cmdThrottle);
         cmdBrake = 0;
-      } else if (speedErrKmh > -6.2 && grade >= -4) {
-        // Gentle coasting / lift-off regen gap before touching brake pedal
+      } else if (speedErrKmh > -5.2 && activeGrade >= -6) {
+        // Gentle coasting / lift-off regen (or B-mode engine braking) before touching brake pedal
         cmdThrottle = 0;
         cmdBrake = 0;
+      } else if (activeGrade < -6 && speedErrKmh > -2.5) {
+        // Let B-range / lift-off regen hold speed on mountain descents unless speed creeps above target
+        cmdThrottle = 0;
+        cmdBrake = Math.max(0, (-speedErrKmh + 0.5) * 2.4 + Math.max(0, Math.abs(activeGrade) - 11) * 1.6);
       } else {
         cmdThrottle = 0;
         cmdBrake = Math.min(
-          78,
-          Math.max(6, (-speedErrKmh - 4.2) * 1.9 + downhillBrakeBias)
+          82,
+          Math.max(6, (-speedErrKmh - 2.8) * 2.0 + downhillBrakeBias * 0.75)
         );
       }
     }
@@ -503,7 +666,9 @@ export class AutoDriveController {
       gear: targetGear,
       throttlePercent: Math.round(this.smoothThrottle),
       brakePercent: Math.round(this.smoothBrake),
-      status: this.buildStatus(state.speedKmh),
+      roadGradePercent:
+        this.mode === AutoDriveMode.MOUNTAIN ? activeGrade : undefined,
+      status: this.buildStatus(state.speedKmh, activeGrade, targetGear),
     };
   }
 }

@@ -218,7 +218,14 @@ export function computeSplits(
       ? Math.min(PSD_CONSTANTS.MG2_MAX_TORQUE_NM, (evPropKw * 9549) / effMg2Rpm)
       : 0;
 
+  // Combined net propulsion power (ICE + net HV Battery electric assist, avoiding MG1->MG2 double count)
+  const combinedKw = !iceFuelActive
+    ? evPropKw
+    : Math.min(146, iceActiveKw + Math.max(0, flows.batteryToPcuKw * 0.95));
+
   const propulsionSplit: PropulsionSplitMetrics = {
+    combinedHp: combinedKw * KW_TO_HP,
+    combinedKw,
     icePercent,
     evPercent,
     iceHp: iceActiveKw * KW_TO_HP,

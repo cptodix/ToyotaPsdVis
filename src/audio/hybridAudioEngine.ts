@@ -10,7 +10,7 @@ import { PowertrainState } from '../types/hybrid';
  */
 export class HybridAudioEngine {
   private ctx: AudioContext | null = null;
-  private enabled = true;
+  private enabled = false;
   private initialized = false;
 
   private masterGain!: GainNode;
