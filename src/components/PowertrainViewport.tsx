@@ -647,7 +647,12 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
       </div>
 
       {/* Top-Right 2D Planetary Gear Insert (Measured via ref so badges NEVER touch it) */}
-      <Planetary2DInsert ref={insertRef} stateRef={stateRef} state={uiState} />
+      <Planetary2DInsert
+        ref={insertRef}
+        stateRef={stateRef}
+        state={uiState}
+        timeScale={visualSpinScale}
+      />
 
       {/* SVG Leader Pointers + Collision-Free 3D Speed, SoC & Direction Callouts */}
       <svg className="pointer-events-none absolute inset-0 w-full h-full z-10 overflow-visible">

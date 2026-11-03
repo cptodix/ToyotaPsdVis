@@ -82,6 +82,34 @@ export interface BrakingSplitMetrics {
   mechTorqueNm: number;
 }
 
+export enum AutoDriveMode {
+  OFF = 'OFF',
+  CITY = 'CITY',
+  HIGHWAY = 'HIGHWAY',
+}
+
+export enum AutoDriveEventKind {
+  NONE = 'NONE',
+  GREEN_LAUNCH = 'GREEN_LAUNCH',
+  URBAN_FLOW = 'URBAN_FLOW',
+  HEAVY_TRAFFIC = 'HEAVY_TRAFFIC',
+  TRAFFIC_JAM = 'TRAFFIC_JAM',
+  RED_LIGHT_BRAKE = 'RED_LIGHT_BRAKE',
+  RED_LIGHT_WAIT = 'RED_LIGHT_WAIT',
+  HIGHWAY_MERGE = 'HIGHWAY_MERGE',
+  HIGHWAY_CRUISE = 'HIGHWAY_CRUISE',
+  TRAFFIC_SLOWDOWN = 'TRAFFIC_SLOWDOWN',
+  OVERTAKE = 'OVERTAKE',
+}
+
+export interface AutoDriveStatus {
+  mode: AutoDriveMode;
+  eventKind: AutoDriveEventKind;
+  eventBadge: string;
+  contextText: string;
+  targetSpeedKmh: number;
+}
+
 export interface PowertrainState {
   iceRpm: number;
   mg1Rpm: number;
@@ -92,8 +120,13 @@ export interface PowertrainState {
   planetLocalRpm: number;
 
   speedKmh: number;
+  odometerKm: number;
+  totalFuelLiters: number;
+  instantFuelLph: number;
   socPercent: number;
   iceFuelActive: boolean;
+  iceMinRunTimerSec: number;
+  forcedChargeActive: boolean;
 
   gear: GearPosition;
   evModeRequested: boolean;
@@ -112,6 +145,7 @@ export interface PowertrainState {
   flows: PowerFlowsKw;
   propulsionSplit: PropulsionSplitMetrics;
   brakingSplit: BrakingSplitMetrics;
+  autoDrive: AutoDriveStatus;
 }
 
 export interface OperationModeSpec {

@@ -236,7 +236,7 @@ export class HybridAudioEngine {
     }
   }
 
-  public update(state: PowertrainState): void {
+  public update(state: PowertrainState, timeScale = 1): void {
     if (!this.initialized || !this.ctx) return;
 
     const now = this.ctx.currentTime;
@@ -244,7 +244,7 @@ export class HybridAudioEngine {
       this.masterGain.gain.setTargetAtTime(0, now, 0.05);
       return;
     }
-    this.masterGain.gain.setTargetAtTime(0.32, now, 0.08);
+    this.masterGain.gain.setTargetAtTime(timeScale < 1 ? 0.22 : 0.32, now, 0.08);
 
     const absSpeed = Math.abs(state.speedKmh);
     const absIceRpm = Math.abs(state.iceRpm);

@@ -3,12 +3,17 @@ import { HybridAudioEngine } from './audio/hybridAudioEngine';
 import { BottomControlDock } from './components/BottomControlDock';
 import { PowertrainViewport } from './components/PowertrainViewport';
 import {
+  AutoDriveController,
+  IDLE_AUTODRIVE_STATUS,
+} from './simulation/autoDriveController';
+import {
   buildStateFromMode,
   OPERATION_MODES,
   solveManualKinematics,
   stepDrivingSimulation,
 } from './simulation/ths5Engine';
 import {
+  AutoDriveMode,
   CameraPresetId,
   GearPosition,
   OperationModeId,
@@ -23,7 +28,9 @@ function createInitialSimulatorState(): PowertrainState {
   const base = buildStateFromMode(splitMode);
   return {
     ...base,
-    throttlePercent: 34,
+    odometerKm: 0,
+    totalFuelLiters: 0,
+    throttlePercent: 22,
     brakePercent: 0,
     roadGradePercent: 0,
     evModeRequested: false,
@@ -34,11 +41,17 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(WorkspaceTab.SIMULATOR);
   const [dockCollapsed, setDockCollapsed] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [autoDriveMode, setAutoDriveMode] = useState<AutoDriveMode>(AutoDriveMode.OFF);
+  const [timeScale, setTimeScale] = useState<number>(1);
 
   const initialState = createInitialSimulatorState();
   const [uiState, setUiState] = useState<PowertrainState>(initialState);
   const stateRef = useRef<PowertrainState>(initialState);
 
+  const timeScaleRef = useRef<number>(timeScale);
+  timeScaleRef.current = timeScale;
+
+  const autoDriveRef = useRef<AutoDriveController>(new AutoDriveController());
   const audioRef = useRef<HybridAudioEngine | null>(null);
   if (!audioRef.current) {
     audioRef.current = new HybridAudioEngine();
@@ -79,6 +92,17 @@ export default function App() {
     };
   }, []);
 
+  const cancelAutoDriveOnManualOverride = useCallback(() => {
+    if (autoDriveRef.current.getMode() !== AutoDriveMode.OFF) {
+      autoDriveRef.current.setMode(AutoDriveMode.OFF, stateRef.current.speedKmh);
+      setAutoDriveMode(AutoDriveMode.OFF);
+      stateRef.current = {
+        ...stateRef.current,
+        autoDrive: { ...IDLE_AUTODRIVE_STATUS },
+      };
+    }
+  }, []);
+
   const handleToggleSound = useCallback(() => {
     setSoundEnabled((prev) => {
       const next = !prev;
@@ -92,15 +116,60 @@ export default function App() {
     });
   }, []);
 
-  const handleTickSimulation = useCallback((dt: number) => {
+  const handleSelectAutoDriveMode = useCallback((mode: AutoDriveMode) => {
+    const status = autoDriveRef.current.setMode(mode, stateRef.current.speedKmh);
+    setAutoDriveMode(mode);
+
+    if (mode !== AutoDriveMode.OFF) {
+      if (
+        driverInputsRef.current.gear !== GearPosition.D &&
+        driverInputsRef.current.gear !== GearPosition.B
+      ) {
+        driverInputsRef.current.gear = GearPosition.D;
+      }
+      driverInputsRef.current.sliderBrake = 0;
+    } else {
+      driverInputsRef.current.sliderThrottle = 0;
+      driverInputsRef.current.sliderBrake = 0;
+    }
+
+    const updated: PowertrainState = {
+      ...stateRef.current,
+      gear: driverInputsRef.current.gear,
+      throttlePercent: driverInputsRef.current.sliderThrottle,
+      brakePercent: driverInputsRef.current.sliderBrake,
+      autoDrive: status,
+    };
+    stateRef.current = updated;
+    setUiState(updated);
+  }, []);
+
+  const handleTickSimulation = useCallback((rawDt: number) => {
+    const scale = timeScaleRef.current;
+    const simDt = rawDt * scale;
+
     if (activeTabRef.current === WorkspaceTab.SIMULATOR) {
       const inp = driverInputsRef.current;
-      const effectiveThrottle = inp.keyBrakeHeld
-        ? 0
-        : inp.keyThrottleHeld
-          ? Math.max(inp.sliderThrottle, 68)
-          : inp.sliderThrottle;
-      const effectiveBrake = inp.keyBrakeHeld ? Math.max(inp.sliderBrake, 65) : inp.sliderBrake;
+      let effectiveThrottle: number;
+      let effectiveBrake: number;
+      let autoStatus = IDLE_AUTODRIVE_STATUS;
+
+      if (autoDriveRef.current.getMode() !== AutoDriveMode.OFF) {
+        const act = autoDriveRef.current.step(stateRef.current, simDt);
+        inp.gear = act.gear;
+        inp.sliderThrottle = act.throttlePercent;
+        inp.sliderBrake = act.brakePercent;
+        effectiveThrottle = act.throttlePercent;
+        effectiveBrake = act.brakePercent;
+        autoStatus = act.status;
+      } else {
+        effectiveThrottle = inp.keyBrakeHeld
+          ? 0
+          : inp.keyThrottleHeld
+            ? Math.max(inp.sliderThrottle, 68)
+            : inp.sliderThrottle;
+        effectiveBrake = inp.keyBrakeHeld ? Math.max(inp.sliderBrake, 65) : inp.sliderBrake;
+      }
 
       const next = stepDrivingSimulation(
         stateRef.current,
@@ -110,19 +179,20 @@ export default function App() {
           throttlePercent: effectiveThrottle,
           brakePercent: effectiveBrake,
           roadGradePercent: inp.roadGradePercent,
+          autoDrive: autoStatus,
         },
-        dt
+        simDt
       );
       stateRef.current = next;
 
-      uiSyncTimerRef.current += dt;
+      uiSyncTimerRef.current += rawDt;
       if (uiSyncTimerRef.current >= 0.055) {
         uiSyncTimerRef.current = 0;
         setUiState(next);
       }
     }
 
-    audioRef.current?.update(stateRef.current);
+    audioRef.current?.update(stateRef.current, scale);
   }, []);
 
   useEffect(() => {
@@ -138,13 +208,16 @@ export default function App() {
 
       if (activeTabRef.current === WorkspaceTab.SIMULATOR) {
         if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') {
+          cancelAutoDriveOnManualOverride();
           driverInputsRef.current.keyThrottleHeld = true;
           driverInputsRef.current.sliderBrake = 0;
         } else if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') {
+          cancelAutoDriveOnManualOverride();
           driverInputsRef.current.keyBrakeHeld = true;
           driverInputsRef.current.sliderThrottle = 0;
         } else if (e.code === 'Space') {
           e.preventDefault();
+          cancelAutoDriveOnManualOverride();
           driverInputsRef.current.sliderThrottle = 0;
           driverInputsRef.current.sliderBrake = 0;
           driverInputsRef.current.keyThrottleHeld = false;
@@ -167,9 +240,19 @@ export default function App() {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, []);
+  }, [cancelAutoDriveOnManualOverride]);
+
+  const handleSelectTab = (tab: WorkspaceTab) => {
+    if (tab !== WorkspaceTab.SIMULATOR) {
+      cancelAutoDriveOnManualOverride();
+    }
+    setActiveTab(tab);
+  };
 
   const handleGearChange = (gear: GearPosition) => {
+    if (gear !== GearPosition.D && gear !== GearPosition.B) {
+      cancelAutoDriveOnManualOverride();
+    }
     driverInputsRef.current.gear = gear;
     const updated = { ...stateRef.current, gear };
     stateRef.current = updated;
@@ -185,6 +268,7 @@ export default function App() {
   };
 
   const handleThrottleChange = (val: number) => {
+    cancelAutoDriveOnManualOverride();
     driverInputsRef.current.sliderThrottle = val;
     if (val > 0) driverInputsRef.current.sliderBrake = 0;
     const updated = {
@@ -197,6 +281,7 @@ export default function App() {
   };
 
   const handleBrakeChange = (val: number) => {
+    cancelAutoDriveOnManualOverride();
     driverInputsRef.current.sliderBrake = val;
     if (val > 0) driverInputsRef.current.sliderThrottle = 0;
     const updated = {
@@ -219,9 +304,13 @@ export default function App() {
   };
 
   const handleSelectOperationMode = (modeId: OperationModeId) => {
+    cancelAutoDriveOnManualOverride();
     const spec = OPERATION_MODES.find((m) => m.id === modeId);
     if (!spec) return;
-    const next = buildStateFromMode(spec);
+    const next = buildStateFromMode(spec, {
+      odometerKm: stateRef.current.odometerKm,
+      totalFuelLiters: stateRef.current.totalFuelLiters,
+    });
     driverInputsRef.current.gear = next.gear;
     driverInputsRef.current.evModeRequested = next.evModeRequested;
     driverInputsRef.current.sliderThrottle = next.throttlePercent;
@@ -232,6 +321,7 @@ export default function App() {
   };
 
   const handleManualShaftChange = (shaft: 'ICE' | 'MG1' | 'WHEEL_MG2', rpm: number) => {
+    cancelAutoDriveOnManualOverride();
     const next = solveManualKinematics(stateRef.current, shaft, rpm, solveTarget);
     stateRef.current = next;
     setUiState(next);
@@ -243,6 +333,10 @@ export default function App() {
   };
 
   const handleResetSystem = () => {
+    autoDriveRef.current.setMode(AutoDriveMode.OFF, 0);
+    setAutoDriveMode(AutoDriveMode.OFF);
+    setTimeScale(1);
+
     const fresh = createInitialSimulatorState();
     driverInputsRef.current = {
       gear: fresh.gear,
@@ -270,19 +364,21 @@ export default function App() {
           cameraPreset={cameraPreset}
           cameraPresetTrigger={cameraPresetTrigger}
           explodeFactor={explodeFactor}
-          visualSpinScale={1}
+          visualSpinScale={timeScale}
           showStreams={true}
         />
       </main>
 
       <BottomControlDock
         activeTab={activeTab}
-        onSelectTab={setActiveTab}
+        onSelectTab={handleSelectTab}
         collapsed={dockCollapsed}
         onToggleCollapse={() => setDockCollapsed((prev) => !prev)}
         state={uiState}
         onGearChange={handleGearChange}
         onToggleEvMode={handleToggleEvMode}
+        autoDriveMode={autoDriveMode}
+        onSelectAutoDriveMode={handleSelectAutoDriveMode}
         onThrottleChange={handleThrottleChange}
         onBrakeChange={handleBrakeChange}
         onRoadGradeChange={handleRoadGradeChange}
@@ -294,6 +390,8 @@ export default function App() {
         onSelectCameraPreset={handleSelectCameraPreset}
         explodeFactor={explodeFactor}
         onExplodeChange={setExplodeFactor}
+        timeScale={timeScale}
+        onTimeScaleChange={setTimeScale}
         soundEnabled={soundEnabled}
         onToggleSound={handleToggleSound}
         onReset={handleResetSystem}

@@ -6,6 +6,7 @@ import { COMPONENT_COLORS, PowertrainState, RotationDir } from '../types/hybrid'
 interface Planetary2DInsertProps {
   stateRef: React.MutableRefObject<PowertrainState>;
   state: PowertrainState;
+  timeScale?: number;
 }
 
 function buildExternalGearPath(
@@ -160,8 +161,10 @@ function formatShortDir(rpm: number): string {
 }
 
 export const Planetary2DInsert = forwardRef<HTMLElement, Planetary2DInsertProps>(
-  function Planetary2DInsert({ stateRef, state }, ref) {
+  function Planetary2DInsert({ stateRef, state, timeScale = 1 }, ref) {
     const [minimized, setMinimized] = useState(false);
+    const timeScaleRef = useRef(timeScale);
+    timeScaleRef.current = timeScale;
 
     const ringGearRef = useRef<SVGGElement | null>(null);
     const carrierGroupRef = useRef<SVGGElement | null>(null);
@@ -188,7 +191,7 @@ export const Planetary2DInsert = forwardRef<HTMLElement, Planetary2DInsertProps>
       let degSun = 0;
 
       const animate = (now: number) => {
-        const dt = Math.min((now - last) / 1000, 0.06);
+        const dt = Math.min((now - last) / 1000, 0.06) * timeScaleRef.current;
         last = now;
 
         const st = stateRef.current;

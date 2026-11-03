@@ -1268,10 +1268,11 @@ export function buildPowertrainScene(
     explodeFactor: number,
     showStreams: boolean
   ) {
-    const k = BASE_RPM_TO_RAD_S * visualSpinScale;
+    const simDt = dt * visualSpinScale;
+    const k = BASE_RPM_TO_RAD_S;
 
-    thetaIce += state.iceRpm * k * dt;
-    thetaSun += state.mg1Rpm * k * dt;
+    thetaIce += state.iceRpm * k * simDt;
+    thetaSun += state.mg1Rpm * k * simDt;
     thetaRing =
       (PSD_CONSTANTS.Z_SUN + PSD_CONSTANTS.Z_RING) * (thetaIce / PSD_CONSTANTS.Z_RING) -
       (PSD_CONSTANTS.Z_SUN / PSD_CONSTANTS.Z_RING) * thetaSun;
@@ -1360,10 +1361,10 @@ export function buildPowertrainScene(
     powerStreamGroup.visible = showStreams;
 
     // 7. 3D Rotation Direction Rings
-    updateIndicator(iceIndicator, state.iceRpm, dt);
-    updateIndicator(mg1Indicator, state.mg1Rpm, dt);
-    updateIndicator(mg2Indicator, state.mg2Rpm, dt);
-    updateIndicator(wheelIndicator, state.wheelRpm, dt);
+    updateIndicator(iceIndicator, state.iceRpm, simDt);
+    updateIndicator(mg1Indicator, state.mg1Rpm, simDt);
+    updateIndicator(mg2Indicator, state.mg2Rpm, simDt);
+    updateIndicator(wheelIndicator, state.wheelRpm, simDt);
 
     // 8. 3D Power Flow Pulses
     if (showStreams) {
@@ -1389,7 +1390,7 @@ export function buildPowertrainScene(
 
         const dirSign = kw >= 0 ? 1 : -1;
         const speed = dirSign * Math.min(1.5, 0.24 + absKw * 0.016);
-        s.phase = (((s.phase + speed * dt) % 1) + 1) % 1;
+        s.phase = (((s.phase + speed * simDt) % 1) + 1) % 1;
 
         const targetColor = kw >= 0 ? s.positiveColor : s.negativeColor;
         s.material.color.copy(targetColor);

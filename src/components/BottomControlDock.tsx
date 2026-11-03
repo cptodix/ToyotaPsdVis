@@ -13,8 +13,11 @@ import {
   getRotationDirection,
   MG2_TO_RING_RATIO,
   OPERATION_MODES,
+  PSD_CONSTANTS,
 } from '../simulation/ths5Engine';
 import {
+  AutoDriveEventKind,
+  AutoDriveMode,
   CameraPresetId,
   GearPosition,
   OperationModeId,
@@ -35,6 +38,8 @@ interface BottomControlDockProps {
 
   onGearChange: (gear: GearPosition) => void;
   onToggleEvMode: () => void;
+  autoDriveMode: AutoDriveMode;
+  onSelectAutoDriveMode: (mode: AutoDriveMode) => void;
   onThrottleChange: (val: number) => void;
   onBrakeChange: (val: number) => void;
   onRoadGradeChange: (val: number) => void;
@@ -49,6 +54,8 @@ interface BottomControlDockProps {
   onSelectCameraPreset: (preset: CameraPresetId) => void;
   explodeFactor: number;
   onExplodeChange: (val: number) => void;
+  timeScale: number;
+  onTimeScaleChange: (scale: number) => void;
   soundEnabled: boolean;
   onToggleSound: () => void;
   onReset: () => void;
@@ -72,7 +79,7 @@ const PowerAndBrakingSplitCard: React.FC<{ state: PowertrainState; horizontal?: 
       className={`flex px-2.5 py-1.5 rounded-lg bg-slate-900/45 border border-slate-700/45 ${
         horizontal
           ? 'flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full'
-          : 'flex-col justify-between gap-1 flex-1 min-w-[208px]'
+          : 'flex-col justify-between gap-1 flex-1 min-w-[186px]'
       }`}
     >
       {/* 1. ICE vs EV Power & Torque Split */}
@@ -146,6 +153,25 @@ const PowerAndBrakingSplitCard: React.FC<{ state: PowertrainState; horizontal?: 
   );
 };
 
+function getAutoDriveEventBadgeClass(kind: AutoDriveEventKind): string {
+  switch (kind) {
+    case AutoDriveEventKind.RED_LIGHT_BRAKE:
+    case AutoDriveEventKind.RED_LIGHT_WAIT:
+      return 'bg-red-500/20 border-red-500/50 text-red-300';
+    case AutoDriveEventKind.GREEN_LAUNCH:
+      return 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300';
+    case AutoDriveEventKind.TRAFFIC_JAM:
+    case AutoDriveEventKind.HEAVY_TRAFFIC:
+    case AutoDriveEventKind.TRAFFIC_SLOWDOWN:
+      return 'bg-amber-500/20 border-amber-500/50 text-amber-300';
+    case AutoDriveEventKind.OVERTAKE:
+    case AutoDriveEventKind.HIGHWAY_MERGE:
+      return 'bg-violet-500/25 border-violet-400/55 text-violet-200';
+    default:
+      return 'bg-cyan-500/20 border-cyan-500/45 text-cyan-300';
+  }
+}
+
 export const BottomControlDock: React.FC<BottomControlDockProps> = ({
   activeTab,
   onSelectTab,
@@ -154,6 +180,8 @@ export const BottomControlDock: React.FC<BottomControlDockProps> = ({
   state,
   onGearChange,
   onToggleEvMode,
+  autoDriveMode,
+  onSelectAutoDriveMode,
   onThrottleChange,
   onBrakeChange,
   onRoadGradeChange,
@@ -165,6 +193,8 @@ export const BottomControlDock: React.FC<BottomControlDockProps> = ({
   onSelectCameraPreset,
   explodeFactor,
   onExplodeChange,
+  timeScale,
+  onTimeScaleChange,
   soundEnabled,
   onToggleSound,
   onReset,
@@ -220,7 +250,42 @@ export const BottomControlDock: React.FC<BottomControlDockProps> = ({
           ))}
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1">
+          {/* Slow-Mo Selector (1x Real-Time · 0.25x Slow-Mo · 0.08x Ultra Slow-Mo) */}
+          <div
+            className={`flex items-center gap-0.5 p-0.5 rounded-lg bg-slate-950/70 border text-[10.5px] ${
+              timeScale < 1 ? 'border-amber-500/55' : 'border-slate-700/60'
+            }`}
+            title="Slow-Motion Speed Control (slows 3D/2D gears, power streams & simulation)"
+          >
+            <span className="px-1 text-slate-400 whitespace-nowrap">Slow-Mo</span>
+            {(
+              [
+                { val: 1, label: '1x' },
+                { val: 0.25, label: '0.25x' },
+                { val: 0.08, label: '0.08x' },
+              ] as const
+            ).map((opt) => {
+              const active = Math.abs(timeScale - opt.val) < 0.005;
+              return (
+                <button
+                  key={opt.label}
+                  type="button"
+                  onClick={() => onTimeScaleChange(opt.val)}
+                  className={`px-1.5 py-0.5 rounded font-mono transition-colors whitespace-nowrap ${
+                    active
+                      ? opt.val < 1
+                        ? 'bg-amber-400 text-slate-950 font-semibold'
+                        : 'bg-slate-700/90 text-white font-semibold'
+                      : 'text-slate-400 hover:text-slate-100'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+
           <div className="hidden sm:flex items-center gap-0.5 p-0.5 rounded-lg bg-slate-950/70 border border-slate-700/60 text-[10.5px]">
             {(
               [
@@ -245,7 +310,7 @@ export const BottomControlDock: React.FC<BottomControlDockProps> = ({
             ))}
           </div>
 
-          <div className="hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-950/70 border border-slate-700/60 text-[10.5px] text-slate-300">
+          <div className="hidden lg:flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-950/70 border border-slate-700/60 text-[10.5px] text-slate-300">
             <label htmlFor="dock-explode" className="whitespace-nowrap">
               Spread {Math.round(explodeFactor * 100)}%
             </label>
@@ -257,7 +322,7 @@ export const BottomControlDock: React.FC<BottomControlDockProps> = ({
               step={0.02}
               value={explodeFactor}
               onChange={(e) => onExplodeChange(Number(e.target.value))}
-              className="ths-slider w-14 text-cyan-400"
+              className="ths-slider w-12 text-cyan-400"
             />
           </div>
 
@@ -296,37 +361,68 @@ export const BottomControlDock: React.FC<BottomControlDockProps> = ({
 
       {/* Translucent Compact Dock Surface */}
       <div className="rounded-xl bg-slate-950/58 border border-slate-700/55 shadow-xl p-2 space-y-1.5">
-        {/* COMPACT UNIVERSAL CURRENT HYBRID MODE & EXPLANATION (Across ALL Tabs) */}
-        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-900/55 border border-slate-700/45 text-[11px] leading-tight">
-          <span className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-600/70 font-mono font-bold text-[10px] text-slate-100 shrink-0">
-            {state.gear}
-          </span>
-          {state.evIndicatorOn ? (
-            <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/50 font-mono font-bold text-[9.5px] text-emerald-300 whitespace-nowrap shrink-0">
-              EV
+        {/* COMPACT UNIVERSAL CURRENT HYBRID MODE + LIVE AUTODRIVE CONTEXT */}
+        <div className="px-2 py-1 rounded-md bg-slate-900/55 border border-slate-700/45 text-[11px] leading-tight space-y-1">
+          {activeTab === WorkspaceTab.SIMULATOR && state.autoDrive.mode !== AutoDriveMode.OFF && (
+            <div className="flex items-center gap-1.5 pb-1 border-b border-slate-700/45">
+              <span className="px-1.5 py-0.5 rounded bg-sky-500/20 border border-sky-400/50 font-mono font-bold text-[9.5px] text-sky-200 whitespace-nowrap shrink-0">
+                {state.autoDrive.mode === AutoDriveMode.CITY ? 'CITY AUTO' : 'HWY AUTO'}
+              </span>
+              <span
+                className={`px-1.5 py-0.5 rounded border font-mono font-bold text-[9.5px] whitespace-nowrap shrink-0 ${getAutoDriveEventBadgeClass(
+                  state.autoDrive.eventKind
+                )}`}
+              >
+                {state.autoDrive.eventBadge}
+              </span>
+              <span className="px-1 py-0.5 rounded bg-slate-950/70 border border-slate-700/60 font-mono text-[9.5px] text-slate-300 whitespace-nowrap shrink-0">
+                {state.autoDrive.targetSpeedKmh > 0
+                  ? `→ ${state.autoDrive.targetSpeedKmh} km/h`
+                  : 'STOP'}
+              </span>
+              <p
+                className="text-slate-200 min-w-0 truncate"
+                title={state.autoDrive.contextText}
+              >
+                {state.autoDrive.contextText}
+              </p>
+            </div>
+          )}
+
+          <div className="flex items-center gap-1.5">
+            <span className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-600/70 font-mono font-bold text-[10px] text-slate-100 shrink-0">
+              {state.gear}
             </span>
-          ) : state.iceFuelActive ? (
-            <span className="px-1.5 py-0.5 rounded bg-red-500/20 border border-red-500/45 font-mono font-bold text-[9.5px] text-red-300 whitespace-nowrap shrink-0">
-              ICE
-            </span>
-          ) : Math.abs(state.iceRpm) > 300 ? (
-            <span className="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-500/45 font-mono font-bold text-[9.5px] text-amber-300 whitespace-nowrap shrink-0">
-              PUMP
-            </span>
-          ) : null}
-          <p className="text-slate-300 min-w-0 line-clamp-2 sm:line-clamp-1" title={`${state.activePhaseTitle}: ${state.activePhaseSummary}`}>
-            <strong className="text-slate-100 font-semibold">{state.activePhaseTitle}:</strong>{' '}
-            {state.activePhaseSummary}
-          </p>
+            {state.evIndicatorOn ? (
+              <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/50 font-mono font-bold text-[9.5px] text-emerald-300 whitespace-nowrap shrink-0">
+                EV
+              </span>
+            ) : state.iceFuelActive ? (
+              <span className="px-1.5 py-0.5 rounded bg-red-500/20 border border-red-500/45 font-mono font-bold text-[9.5px] text-red-300 whitespace-nowrap shrink-0">
+                ICE
+              </span>
+            ) : Math.abs(state.iceRpm) > 300 ? (
+              <span className="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-500/45 font-mono font-bold text-[9.5px] text-amber-300 whitespace-nowrap shrink-0">
+                PUMP
+              </span>
+            ) : null}
+            <p
+              className="text-slate-300 min-w-0 line-clamp-2 sm:line-clamp-1"
+              title={`${state.activePhaseTitle}: ${state.activePhaseSummary}`}
+            >
+              <strong className="text-slate-100 font-semibold">{state.activePhaseTitle}:</strong>{' '}
+              {state.activePhaseSummary}
+            </p>
+          </div>
         </div>
 
         {/* ================================================================== */}
         {/* TAB 1: COMPACT ZERO-WASTE DRIVING SIMULATOR                         */}
         {/* ================================================================== */}
         {activeTab === WorkspaceTab.SIMULATOR && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 min-[820px]:flex min-[820px]:flex-row items-stretch gap-1.5">
-            {/* 1. Compact Driver Controls (P/R/N/D/B + EV + Throttle + Brake + Extreme ±50% Incline) */}
-            <div className="flex flex-col justify-between gap-1 px-2.5 py-1.5 rounded-lg bg-slate-900/45 border border-slate-700/45 min-[820px]:w-[224px] shrink-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 min-[860px]:flex min-[860px]:flex-row items-stretch gap-1.5">
+            {/* 1. Compact Driver Controls (P/R/N/D/B + EV + AutoDrive + Pedals + ±50% Incline) */}
+            <div className="flex flex-col justify-between gap-0.5 px-2.5 py-1.5 rounded-lg bg-slate-900/45 border border-slate-700/45 min-[860px]:w-[224px] shrink-0">
               <div className="flex items-center justify-between gap-1.5">
                 <div className="flex items-center gap-0.5">
                   {[
@@ -362,6 +458,7 @@ export const BottomControlDock: React.FC<BottomControlDockProps> = ({
                 <button
                   type="button"
                   onClick={onToggleEvMode}
+                  title="Dedicated EV Mode (<= 50 km/h when SoC >= 36%)"
                   className={`inline-flex items-center gap-1 px-1.5 h-4.5 rounded text-[10px] font-semibold border transition-colors whitespace-nowrap ${
                     state.evModeRequested
                       ? 'bg-emerald-500 text-slate-950 border-emerald-300'
@@ -371,6 +468,39 @@ export const BottomControlDock: React.FC<BottomControlDockProps> = ({
                   <Leaf className="w-2.5 h-2.5" />
                   <span>EV Mode</span>
                 </button>
+              </div>
+
+              <div className="flex items-center gap-1.5 text-[10px]">
+                <span className="w-11 text-slate-300 shrink-0">Auto</span>
+                <div className="flex-1 grid grid-cols-3 gap-0.5 p-0.5 rounded bg-slate-950/65 border border-slate-800">
+                  {(
+                    [
+                      { id: AutoDriveMode.OFF, label: 'Off' },
+                      { id: AutoDriveMode.CITY, label: 'City' },
+                      { id: AutoDriveMode.HIGHWAY, label: 'Hwy' },
+                    ] as const
+                  ).map((m) => {
+                    const active = autoDriveMode === m.id;
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => onSelectAutoDriveMode(m.id)}
+                        className={`py-0.2 rounded text-[9.5px] font-medium transition-colors whitespace-nowrap ${
+                          active
+                            ? m.id === AutoDriveMode.OFF
+                              ? 'bg-slate-200 text-slate-950 font-semibold'
+                              : m.id === AutoDriveMode.CITY
+                                ? 'bg-amber-400 text-slate-950 font-semibold'
+                                : 'bg-cyan-400 text-slate-950 font-semibold'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        {m.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="flex items-center gap-1.5 text-[10.5px]">
@@ -443,7 +573,7 @@ export const BottomControlDock: React.FC<BottomControlDockProps> = ({
             <PowerAndBrakingSplitCard state={state} />
 
             {/* 4. Compact Car Energy Flow & Extreme Incline Preview */}
-            <CarEnergyFlowPreview state={state} />
+            <CarEnergyFlowPreview state={state} timeScale={timeScale} />
           </div>
         )}
 
@@ -519,7 +649,7 @@ export const BottomControlDock: React.FC<BottomControlDockProps> = ({
                   aria-label="ICE Speed RPM"
                   type="range"
                   min={-2000}
-                  max={5200}
+                  max={PSD_CONSTANTS.ICE_MAX_RPM}
                   step={25}
                   value={Math.round(state.iceRpm)}
                   onChange={(e) => onManualShaftChange('ICE', Number(e.target.value))}
@@ -631,7 +761,7 @@ export const BottomControlDock: React.FC<BottomControlDockProps> = ({
                   aria-label="MG2 and Ring Speed RPM"
                   type="range"
                   min={-1800}
-                  max={4400}
+                  max={4800}
                   step={20}
                   value={Math.round(state.ringRpm)}
                   onChange={(e) => onManualShaftChange('WHEEL_MG2', Number(e.target.value))}

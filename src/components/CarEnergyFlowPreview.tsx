@@ -1,8 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { COMPONENT_COLORS, PowertrainState } from '../types/hybrid';
+import {
+  AutoDriveEventKind,
+  AutoDriveMode,
+  COMPONENT_COLORS,
+  PowertrainState,
+} from '../types/hybrid';
 
 interface CarEnergyFlowPreviewProps {
   state: PowertrainState;
+  timeScale?: number;
 }
 
 interface FlowArrowProps {
@@ -78,14 +84,17 @@ const FlowArrow: React.FC<FlowArrowProps> = ({
  * Compact Translucent 5th-Gen Car Preview & Simplified Energy Flow
  * Supports extreme road inclines (-50% to +50%, up to ±26.6° true ramp angle).
  */
-export const CarEnergyFlowPreview: React.FC<CarEnergyFlowPreviewProps> = ({ state }) => {
+export const CarEnergyFlowPreview: React.FC<CarEnergyFlowPreviewProps> = ({
+  state,
+  timeScale = 1,
+}) => {
   const [animState, setAnimState] = useState({ phase: 0, wheelAngle: 0, roadShift: 0 });
 
   useEffect(() => {
     let raf = 0;
     let last = performance.now();
     const step = (now: number) => {
-      const dt = Math.min((now - last) / 1000, 0.06);
+      const dt = Math.min((now - last) / 1000, 0.06) * timeScale;
       last = now;
       setAnimState((prev) => ({
         phase: (prev.phase + dt * 1.15) % 1,
@@ -96,14 +105,25 @@ export const CarEnergyFlowPreview: React.FC<CarEnergyFlowPreviewProps> = ({ stat
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [state.speedKmh]);
+  }, [state.speedKmh, timeScale]);
 
   const braking = state.brakePercent > 2 || state.flows.counterToWheelKw < -1.5;
   const grade = Math.round(state.roadGradePercent);
-  // True physical angle atan(grade / 100) in degrees (car faces left, so uphill +grade rotates CW +deg!)
-  // Wait: car front wheel is at x=60 (LEFT), rear wheel is at x=216 (RIGHT)!
-  // Let's verify: nIce={x:52} (front hood on left!), brake taillight at x=248 (right!).
-  // Because the car faces LEFT, climbing uphill means LEFT (x=60) goes UP (-Y) and RIGHT (x=216) goes DOWN (+Y) -> POSITIVE clockwise SVG rotation (+deg)!
+  const ad = state.autoDrive;
+  const isRedSignal =
+    ad.mode !== AutoDriveMode.OFF &&
+    (ad.eventKind === AutoDriveEventKind.RED_LIGHT_BRAKE ||
+      ad.eventKind === AutoDriveEventKind.RED_LIGHT_WAIT);
+  const isGreenSignal =
+    ad.mode !== AutoDriveMode.OFF && ad.eventKind === AutoDriveEventKind.GREEN_LAUNCH;
+  const showLeadVehicle =
+    ad.mode !== AutoDriveMode.OFF &&
+    (ad.eventKind === AutoDriveEventKind.TRAFFIC_JAM ||
+      ad.eventKind === AutoDriveEventKind.HEAVY_TRAFFIC ||
+      ad.eventKind === AutoDriveEventKind.TRAFFIC_SLOWDOWN);
+  const showOvertakeArrow =
+    ad.mode !== AutoDriveMode.OFF && ad.eventKind === AutoDriveEventKind.OVERTAKE;
+
   const trueSlopeDeg = (Math.atan(state.roadGradePercent / 100) * 180) / Math.PI;
   const gradeTiltDeg = Math.max(-25, Math.min(25, trueSlopeDeg));
 
@@ -114,7 +134,7 @@ export const CarEnergyFlowPreview: React.FC<CarEnergyFlowPreviewProps> = ({ stat
   const nBatt = { x: 205, y: 70 };
 
   return (
-    <div className="flex flex-col justify-between px-2 py-1 rounded-lg bg-slate-900/45 border border-slate-700/45 min-[820px]:w-[194px] shrink-0">
+    <div className="flex flex-col justify-between px-2 py-1 rounded-lg bg-slate-900/45 border border-slate-700/45 min-[860px]:w-[188px] shrink-0">
       <div className="flex items-center justify-between text-[10px] text-slate-300">
         <span className="font-medium text-slate-300 whitespace-nowrap">
           Incline{' '}
@@ -138,7 +158,7 @@ export const CarEnergyFlowPreview: React.FC<CarEnergyFlowPreviewProps> = ({ stat
       >
         <g transform={`rotate(${gradeTiltDeg.toFixed(2)}, 134, 64)`}>
           {/* Moving Road */}
-          <line x1="6" y1="93" x2="262" y2="93" stroke="#334155" strokeWidth="1.6" />
+          <line x1="2" y1="93" x2="262" y2="93" stroke="#334155" strokeWidth="1.6" />
           {Array.from({ length: 10 }).map((_, i) => {
             const rx = 12 + ((i * 28 - animState.roadShift + 280) % 248);
             return (
@@ -153,6 +173,57 @@ export const CarEnergyFlowPreview: React.FC<CarEnergyFlowPreviewProps> = ({ stat
               />
             );
           })}
+
+          {/* AutoDrive Traffic Signal Cue (Ahead of Front Bumper) */}
+          {(isRedSignal || isGreenSignal) && (
+            <g transform="translate(5, 36)">
+              <line x1="0" y1="22" x2="0" y2="57" stroke="#64748b" strokeWidth="1.6" />
+              <rect
+                x="-5"
+                y="0"
+                width="10"
+                height="23"
+                rx="2.5"
+                fill="#0f172a"
+                stroke="#64748b"
+                strokeWidth="1.1"
+              />
+              <circle
+                cx="0"
+                cy="5.5"
+                r="2.7"
+                fill={isRedSignal ? '#ef4444' : '#450a0a'}
+              />
+              <circle cx="0" cy="11.5" r="2.3" fill="#422006" />
+              <circle
+                cx="0"
+                cy="17.5"
+                r="2.7"
+                fill={isGreenSignal ? '#10b981' : '#052e16'}
+              />
+            </g>
+          )}
+
+          {/* AutoDrive Lead Traffic Cue (Traffic Jam / Heavy Traffic / Slowdown) */}
+          {showLeadVehicle && (
+            <g transform="translate(-4, 62)">
+              <path
+                d="M 0 18 L 2 8 L 12 4 L 15 18 Z"
+                fill="rgba(245, 158, 11, 0.22)"
+                stroke="#f59e0b"
+                strokeWidth="1.2"
+              />
+              <line x1="14.5" y1="9" x2="14.5" y2="14" stroke="#ef4444" strokeWidth="2.2" />
+            </g>
+          )}
+
+          {/* AutoDrive Passing / Overtake Cue */}
+          {showOvertakeArrow && (
+            <g transform="translate(-3, 52)">
+              <line x1="16" y1="8" x2="2" y2="8" stroke="#c084fc" strokeWidth="2" />
+              <polygon points="0,8 6,4 6,12" fill="#c084fc" />
+            </g>
+          )}
 
           {/* Car Silhouette (Front faces Left) */}
           <path
