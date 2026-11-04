@@ -319,6 +319,22 @@ export default function App() {
     setUiState(updated);
   };
 
+  const handleNetPowerChange = (netPercent: number) => {
+    cancelAutoDriveOnManualOverride();
+    const clamped = Math.max(-100, Math.min(100, netPercent));
+    const throttle = clamped > 0 ? clamped : 0;
+    const brake = clamped < 0 ? Math.abs(clamped) : 0;
+    driverInputsRef.current.sliderThrottle = throttle;
+    driverInputsRef.current.sliderBrake = brake;
+    const updated = {
+      ...stateRef.current,
+      throttlePercent: throttle,
+      brakePercent: brake,
+    };
+    stateRef.current = updated;
+    setUiState(updated);
+  };
+
   const handleRoadGradeChange = (val: number) => {
     const ctrl = autoDriveRef.current;
     if (ctrl && ctrl.getMode() === AutoDriveMode.MOUNTAIN) {
@@ -392,6 +408,7 @@ export default function App() {
         <PowertrainViewport
           stateRef={stateRef}
           uiState={uiState}
+          activeTab={activeTab}
           onTickSimulation={handleTickSimulation}
           cameraPreset={cameraPreset}
           cameraPresetTrigger={cameraPresetTrigger}
@@ -413,6 +430,7 @@ export default function App() {
         onSelectAutoDriveMode={handleSelectAutoDriveMode}
         onThrottleChange={handleThrottleChange}
         onBrakeChange={handleBrakeChange}
+        onNetPowerChange={handleNetPowerChange}
         onRoadGradeChange={handleRoadGradeChange}
         onSelectOperationMode={handleSelectOperationMode}
         solveTarget={solveTarget}

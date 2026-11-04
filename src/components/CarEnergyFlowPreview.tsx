@@ -128,7 +128,7 @@ export const CarEnergyFlowPreview: React.FC<CarEnergyFlowPreviewProps> = ({
   const isMountain = ad.mode === AutoDriveMode.MOUNTAIN;
 
   const trueSlopeDeg = (Math.atan(state.roadGradePercent / 100) * 180) / Math.PI;
-  const gradeTiltDeg = Math.max(-8, Math.min(8, trueSlopeDeg * 0.38));
+  const gradeTiltDeg = Math.max(-6.5, Math.min(6.5, trueSlopeDeg * 0.32));
 
   const nIce = { x: 54, y: 40 };
   const nPsdMg1 = { x: 116, y: 31 };
@@ -138,11 +138,12 @@ export const CarEnergyFlowPreview: React.FC<CarEnergyFlowPreviewProps> = ({
 
   return (
     <div
-      className={`flex flex-col justify-between px-2.5 py-1.5 rounded-lg bg-slate-900/45 border border-slate-700/45 w-full min-w-0 overflow-hidden ${className}`}
+      className={`flex flex-col justify-between px-1 min-[760px]:px-1.5 py-1 rounded-lg bg-slate-900/45 border border-slate-700/45 w-full h-full min-w-0 overflow-hidden ${className}`}
     >
-      <div className="flex items-center justify-between text-[11px] text-slate-300 leading-none min-w-0">
+      <div className="flex items-center justify-between text-[8px] min-[760px]:text-[9px] min-[960px]:text-[10px] text-slate-300 leading-none min-w-0">
         <span className="font-medium text-slate-300 whitespace-nowrap">
-          Incline{' '}
+          <span className="min-[920px]:hidden">Inc </span>
+          <span className="hidden min-[920px]:inline">Incline </span>
           <span
             className={`font-mono tabular-nums font-semibold ${
               grade > 0 ? 'text-amber-300' : grade < 0 ? 'text-cyan-300' : 'text-slate-400'
@@ -151,14 +152,14 @@ export const CarEnergyFlowPreview: React.FC<CarEnergyFlowPreviewProps> = ({
             {grade > 0 ? `+${grade}%` : `${grade}%`}
           </span>
         </span>
-        <span className="font-mono tabular-nums font-semibold text-emerald-400 shrink-0 ml-1 whitespace-nowrap">
+        <span className="font-mono tabular-nums font-semibold text-emerald-400 shrink-0 ml-0.5 whitespace-nowrap">
           SoC {Math.round(state.socPercent)}%
         </span>
       </div>
 
-      <div className="relative w-full h-[84px] overflow-hidden mt-1">
+      <div className="relative w-full h-[50px] min-[920px]:h-[58px] overflow-hidden mt-0.5">
         <svg
-          viewBox="-8 3 272 105"
+          viewBox="-8 9 272 95"
           preserveAspectRatio="xMidYMid meet"
           className="w-full h-full block overflow-hidden"
           aria-label="5th Gen Car Energy Flow Diagram"

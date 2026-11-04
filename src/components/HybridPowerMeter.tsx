@@ -49,10 +49,10 @@ export const HybridPowerMeter: React.FC<HybridPowerMeterProps> = ({ state, class
   const zoneLabel =
     state.gear === GearPosition.P
       ? state.flows.batteryToPcuKw < -0.5
-        ? 'PARK·CHG'
+        ? 'P·CHG'
         : 'PARK'
       : state.gear === GearPosition.N
-        ? 'NEUTRAL'
+        ? 'NEUT'
         : state.hsiZone === HsiZone.CHG
           ? 'CHG'
           : state.hsiZone === HsiZone.PWR
@@ -63,73 +63,74 @@ export const HybridPowerMeter: React.FC<HybridPowerMeterProps> = ({ state, class
 
   const odoText =
     state.odometerKm < 100
-      ? `${state.odometerKm.toFixed(2)} km`
-      : `${state.odometerKm.toFixed(1)} km`;
+      ? `${state.odometerKm.toFixed(2)}km`
+      : `${state.odometerKm.toFixed(1)}km`;
 
   const avgText =
     state.odometerKm < 0.005
-      ? '--.- km/L'
+      ? '--.-km/L'
       : state.totalFuelLiters <= 0.00001
-        ? '99.9 km/L'
-        : `${Math.min(99.9, state.odometerKm / state.totalFuelLiters).toFixed(1)} km/L`;
+        ? '99.9km/L'
+        : `${Math.min(99.9, state.odometerKm / state.totalFuelLiters).toFixed(1)}km/L`;
 
   const fuelText =
     state.totalFuelLiters < 10
-      ? `${state.totalFuelLiters.toFixed(3)} L`
-      : `${state.totalFuelLiters.toFixed(2)} L`;
+      ? `${state.totalFuelLiters.toFixed(2)}L`
+      : `${state.totalFuelLiters.toFixed(1)}L`;
 
   return (
     <div
-      className={`flex flex-col justify-between px-2 py-1.5 rounded-lg bg-slate-900/45 border border-slate-700/45 w-full min-w-0 overflow-hidden ${className}`}
+      className={`flex items-center justify-between gap-1 px-1.5 py-1 rounded-lg bg-slate-900/45 border border-slate-700/45 w-full min-w-0 overflow-hidden ${className}`}
     >
-      <div className="flex items-center justify-center gap-2 min-w-0">
+      {/* Sub-Col-A: Power Meter Dial + Speedometer + Zone / kW (Wider!) */}
+      <div className="flex-1 min-w-0 flex flex-col items-center justify-center">
         <svg
-          viewBox="0 0 172 90"
-          className="w-[106px] h-[58px] shrink-0 overflow-hidden"
+          viewBox="0 0 172 86"
+          className="w-[68px] h-[36px] min-[720px]:w-[84px] min-[720px]:h-[44px] min-[960px]:w-[102px] min-[960px]:h-[53px] shrink-0 overflow-hidden"
           aria-label="Hybrid Power Meter and Speedometer"
         >
           <path
             d={describeArc(cx, cy, r, -115, 115)}
             fill="none"
             stroke="#1e293b"
-            strokeWidth="9"
+            strokeWidth="10"
           />
           <path
             d={describeArc(cx, cy, r, -115, -50)}
             fill="none"
             stroke="#06b6d4"
             strokeOpacity={hsi < -1 ? 0.95 : 0.35}
-            strokeWidth="9"
+            strokeWidth="10"
           />
           <path
             d={describeArc(cx, cy, r, -46, 10)}
             fill="none"
             stroke="#10b981"
             strokeOpacity={hsi > 1 && hsi <= 42 ? 0.95 : 0.35}
-            strokeWidth="9"
+            strokeWidth="10"
           />
           <path
             d={describeArc(cx, cy, r, 14, 66)}
             fill="none"
             stroke="#34d399"
             strokeOpacity={hsi > 42 && hsi <= 72 ? 0.95 : 0.32}
-            strokeWidth="9"
+            strokeWidth="10"
           />
           <path
             d={describeArc(cx, cy, r, 70, 115)}
             fill="none"
             stroke="#ef4444"
             strokeOpacity={hsi > 72 ? 0.98 : 0.35}
-            strokeWidth="9"
+            strokeWidth="10"
           />
 
-          <text x="10" y="77" className="fill-cyan-400 text-[9px] font-semibold">
+          <text x="8" y="78" className="fill-cyan-400 text-[10.5px] font-semibold">
             CHG
           </text>
-          <text x="53" y="13" className="fill-emerald-400 text-[9px] font-semibold">
+          <text x="52" y="13" className="fill-emerald-400 text-[10.5px] font-semibold">
             ECO
           </text>
-          <text x="139" y="77" className="fill-red-400 text-[9px] font-semibold">
+          <text x="137" y="78" className="fill-red-400 text-[10.5px] font-semibold">
             PWR
           </text>
 
@@ -139,69 +140,72 @@ export const HybridPowerMeter: React.FC<HybridPowerMeterProps> = ({ state, class
             x2={needleTip.x}
             y2={needleTip.y}
             stroke="#f8fafc"
-            strokeWidth="2.8"
+            strokeWidth="3.1"
             strokeLinecap="round"
           />
 
           <text
             x={cx}
-            y={cy - 10}
+            y={cy - 9}
             textAnchor="middle"
-            className="fill-slate-50 font-mono text-[24px] font-bold"
+            className="fill-slate-50 font-mono text-[27px] font-bold"
           >
             {state.speedKmh < -0.5 ? `-${absKmh}` : absKmh}
           </text>
           <text
             x={cx}
-            y={cy + 4}
+            y={cy + 5}
             textAnchor="middle"
-            className="fill-slate-400 text-[9.5px] font-medium"
+            className="fill-slate-400 text-[10.5px] font-medium"
           >
             km/h
           </text>
         </svg>
 
-        <div className="flex flex-col justify-center gap-0.5 min-w-[58px]">
-          <div className="flex items-center justify-between text-[11px]">
-            <span className="text-slate-400">Gear</span>
-            <span className="font-mono font-bold text-slate-100">{state.gear}</span>
-          </div>
-          <div
-            className={`text-[11px] font-semibold whitespace-nowrap ${
+        <div className="flex items-center justify-center gap-0.5 text-[8px] min-[720px]:text-[8.5px] min-[960px]:text-[9.5px] font-mono tabular-nums leading-none mt-0.5 whitespace-nowrap">
+          <span
+            className={`font-semibold ${
               state.evIndicatorOn ? 'text-emerald-400' : 'text-amber-400'
             }`}
           >
             {zoneLabel}
-          </div>
-          <div className="font-mono text-[11px] text-slate-200 whitespace-nowrap">
+          </span>
+          <span className="text-slate-600">·</span>
+          <span className="text-slate-200">
             {state.flows.counterToWheelKw >= 0 ? '+' : ''}
-            {Math.round(state.flows.counterToWheelKw)} kW
-          </div>
+            {Math.round(state.flows.counterToWheelKw)}kW
+          </span>
         </div>
       </div>
 
-      {/* Trip Odometer (km), Avg Fuel Consumption (km/L) & Total Fuel Consumed (L) */}
-      <div className="grid grid-cols-3 gap-1 pt-1.5 mt-1 border-t border-slate-800/85 text-center font-mono">
-        <div className="min-w-0" title="Trip Odometer (resets on Reset)">
-          <div className="text-[9px] font-sans font-medium text-slate-400 leading-none">ODO</div>
-          <div className="text-[10.5px] font-semibold text-slate-100 whitespace-nowrap mt-0.5">
+      {/* Sub-Col-B: ODO, AVG, FUEL Stacked Vertically (Narrower!) */}
+      <div className="shrink-0 flex flex-col justify-center gap-1 pl-1 min-w-[48px] max-w-[62px] border-l border-slate-800/85 font-mono tabular-nums">
+        <div
+          className="flex items-baseline justify-between gap-0.5 leading-none"
+          title="Trip Odometer in km (resets on Reset)"
+        >
+          <span className="text-[7.5px] font-sans font-medium text-slate-400 shrink-0">ODO</span>
+          <span className="text-[8px] min-[760px]:text-[8.5px] min-[960px]:text-[9px] font-semibold text-slate-100 whitespace-nowrap">
             {odoText}
-          </div>
+          </span>
         </div>
         <div
-          className="min-w-0 border-x border-slate-800/80 px-0.5"
+          className="flex items-baseline justify-between gap-0.5 leading-none"
           title="Average Fuel Consumption in km/L (resets on Reset)"
         >
-          <div className="text-[9px] font-sans font-medium text-slate-400 leading-none">AVG</div>
-          <div className="text-[10.5px] font-semibold text-emerald-300 whitespace-nowrap mt-0.5">
+          <span className="text-[7.5px] font-sans font-medium text-slate-400 shrink-0">AVG</span>
+          <span className="text-[8px] min-[760px]:text-[8.5px] min-[960px]:text-[9px] font-semibold text-emerald-300 whitespace-nowrap">
             {avgText}
-          </div>
+          </span>
         </div>
-        <div className="min-w-0" title="Total Gasoline Consumed in Liters (resets on Reset)">
-          <div className="text-[9px] font-sans font-medium text-slate-400 leading-none">FUEL</div>
-          <div className="text-[10.5px] font-semibold text-amber-300 whitespace-nowrap mt-0.5">
+        <div
+          className="flex items-baseline justify-between gap-0.5 leading-none"
+          title="Total Gasoline Consumed in Liters (resets on Reset)"
+        >
+          <span className="text-[7.5px] font-sans font-medium text-slate-400 shrink-0">FUEL</span>
+          <span className="text-[8px] min-[760px]:text-[8.5px] min-[960px]:text-[9px] font-semibold text-amber-300 whitespace-nowrap">
             {fuelText}
-          </div>
+          </span>
         </div>
       </div>
     </div>

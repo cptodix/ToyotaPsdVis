@@ -4,22 +4,55 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { formatDirectionLabel, getRotationDirection } from '../simulation/ths5Engine';
 import { buildPowertrainScene, LabelAnchorRefs } from '../three/buildPowertrainScene';
 import {
+  AutoDriveEventKind,
+  AutoDriveMode,
   CameraPresetId,
   COMPONENT_COLORS,
   PowertrainState,
   RotationDir,
+  WorkspaceTab,
 } from '../types/hybrid';
 import { Planetary2DInsert } from './Planetary2DInsert';
 
 interface PowertrainViewportProps {
   stateRef: React.MutableRefObject<PowertrainState>;
   uiState: PowertrainState;
+  activeTab: WorkspaceTab;
   onTickSimulation: (dt: number) => void;
   cameraPreset: CameraPresetId;
   cameraPresetTrigger: number;
   explodeFactor: number;
   visualSpinScale: number;
   showStreams: boolean;
+}
+
+function getAutoDriveEventBadgeClass(kind: AutoDriveEventKind): string {
+  switch (kind) {
+    case AutoDriveEventKind.RED_LIGHT_BRAKE:
+    case AutoDriveEventKind.RED_LIGHT_WAIT:
+      return 'bg-red-500/20 border-red-500/50 text-red-300';
+    case AutoDriveEventKind.GREEN_LAUNCH:
+    case AutoDriveEventKind.SUMMIT_CREST:
+      return 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300';
+    case AutoDriveEventKind.TRAFFIC_JAM:
+    case AutoDriveEventKind.HEAVY_TRAFFIC:
+    case AutoDriveEventKind.TRAFFIC_SLOWDOWN:
+    case AutoDriveEventKind.MOUNTAIN_CLIMB:
+      return 'bg-amber-500/20 border-amber-500/50 text-amber-300';
+    case AutoDriveEventKind.OVERTAKE:
+    case AutoDriveEventKind.HIGHWAY_MERGE:
+    case AutoDriveEventKind.MOUNTAIN_DESCENT:
+      return 'bg-violet-500/25 border-violet-400/55 text-violet-200';
+    default:
+      return 'bg-cyan-500/20 border-cyan-500/45 text-cyan-300';
+  }
+}
+
+function getAutoDriveModeLabel(mode: AutoDriveMode): string {
+  if (mode === AutoDriveMode.CITY) return 'CITY AUTO';
+  if (mode === AutoDriveMode.HIGHWAY) return 'HWY AUTO';
+  if (mode === AutoDriveMode.MOUNTAIN) return 'MTN AUTO';
+  return 'AUTO';
 }
 
 const CAMERA_PRESETS: Record<
@@ -75,6 +108,7 @@ const _tagLayout: [
 export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
   stateRef,
   uiState,
+  activeTab,
   onTickSimulation,
   cameraPreset,
   cameraPresetTrigger,
@@ -596,54 +630,57 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
     <div className="relative w-full h-full overflow-hidden select-none bg-[#090d16]">
       <div ref={canvasMountRef} className="w-full h-full" />
 
-      {/* Top-Left Title + Complete 5-Component Color Key */}
+      {/* Top-Left HUD Stack: Title + 5-Component Legend + Drive & Hybrid Status */}
       <div
         ref={topBarRef}
-        className="pointer-events-none absolute top-3 left-3.5 z-10 inline-flex w-fit max-w-[calc(100vw-232px)] flex-wrap items-center gap-x-2.5 gap-y-1 px-2.5 py-1 rounded-lg bg-slate-950/68 border border-slate-800/75 text-[11.5px] text-slate-300"
+        className="pointer-events-none absolute top-2.5 left-3.5 z-10 flex flex-col items-start gap-1.5 w-fit max-w-[calc(100vw-246px)]"
       >
-        <span className="font-display font-bold text-xs text-slate-100 whitespace-nowrap">
-          5th-Gen Toyota PSD
-        </span>
-        <span className="text-slate-600 hidden sm:inline">·</span>
-        <span className="inline-flex items-center gap-1 whitespace-nowrap">
-          <span
-            className="w-2 h-2 rounded-xs"
-            style={{ backgroundColor: COMPONENT_COLORS.ice.hex }}
-          />
-          <span>ICE + Carrier &amp; Planets</span>
-        </span>
-        <span className="text-slate-600">·</span>
-        <span className="inline-flex items-center gap-1 whitespace-nowrap">
-          <span
-            className="w-2 h-2 rounded-xs"
-            style={{ backgroundColor: COMPONENT_COLORS.mg1.hex }}
-          />
-          <span>MG1 + Sun</span>
-        </span>
-        <span className="text-slate-600">·</span>
-        <span className="inline-flex items-center gap-1 whitespace-nowrap">
-          <span
-            className="w-2 h-2 rounded-xs"
-            style={{ backgroundColor: COMPONENT_COLORS.mg2.hex }}
-          />
-          <span>MG2 + Ring &amp; Gears</span>
-        </span>
-        <span className="text-slate-600">·</span>
-        <span className="inline-flex items-center gap-1 whitespace-nowrap">
-          <span
-            className="w-2 h-2 rounded-xs"
-            style={{ backgroundColor: COMPONENT_COLORS.wheel.hex }}
-          />
-          <span>Wheel + Tire</span>
-        </span>
-        <span className="text-slate-600">·</span>
-        <span className="inline-flex items-center gap-1 whitespace-nowrap">
-          <span
-            className="w-2 h-2 rounded-xs"
-            style={{ backgroundColor: COMPONENT_COLORS.battery.hex }}
-          />
-          <span>HV Batt + PCU</span>
-        </span>
+        {/* Row 1: Title ("Toyota eCVT PSD") + Complete 5-Component Color Key */}
+        <div className="inline-flex w-fit max-w-full flex-wrap items-center gap-x-2.5 gap-y-1 px-2.5 py-1 rounded-lg bg-slate-950/72 border border-slate-800/80 text-[11px] text-slate-300">
+          <span className="font-display font-bold text-xs text-slate-100 whitespace-nowrap">
+            Toyota eCVT PSD
+          </span>
+          <span className="text-slate-600 hidden sm:inline">·</span>
+          <span className="inline-flex items-center gap-1 whitespace-nowrap">
+            <span
+              className="w-2 h-2 rounded-xs"
+              style={{ backgroundColor: COMPONENT_COLORS.ice.hex }}
+            />
+            <span>ICE + Carrier &amp; Planets</span>
+          </span>
+          <span className="text-slate-600">·</span>
+          <span className="inline-flex items-center gap-1 whitespace-nowrap">
+            <span
+              className="w-2 h-2 rounded-xs"
+              style={{ backgroundColor: COMPONENT_COLORS.mg1.hex }}
+            />
+            <span>MG1 + Sun</span>
+          </span>
+          <span className="text-slate-600">·</span>
+          <span className="inline-flex items-center gap-1 whitespace-nowrap">
+            <span
+              className="w-2 h-2 rounded-xs"
+              style={{ backgroundColor: COMPONENT_COLORS.mg2.hex }}
+            />
+            <span>MG2 + Ring &amp; Gears</span>
+          </span>
+          <span className="text-slate-600">·</span>
+          <span className="inline-flex items-center gap-1 whitespace-nowrap">
+            <span
+              className="w-2 h-2 rounded-xs"
+              style={{ backgroundColor: COMPONENT_COLORS.wheel.hex }}
+            />
+            <span>Wheel + Tire</span>
+          </span>
+          <span className="text-slate-600">·</span>
+          <span className="inline-flex items-center gap-1 whitespace-nowrap">
+            <span
+              className="w-2 h-2 rounded-xs"
+              style={{ backgroundColor: COMPONENT_COLORS.battery.hex }}
+            />
+            <span>HV Batt + PCU</span>
+          </span>
+        </div>
       </div>
 
       {/* Top-Right 2D Planetary Gear Insert (Measured via ref so badges NEVER touch it) */}

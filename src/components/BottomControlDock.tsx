@@ -29,6 +29,35 @@ import {
 import { CarEnergyFlowPreview } from './CarEnergyFlowPreview';
 import { HybridPowerMeter } from './HybridPowerMeter';
 
+function getAutoDriveEventBadgeClass(kind: AutoDriveEventKind): string {
+  switch (kind) {
+    case AutoDriveEventKind.RED_LIGHT_BRAKE:
+    case AutoDriveEventKind.RED_LIGHT_WAIT:
+      return 'bg-red-500/20 border-red-500/50 text-red-300';
+    case AutoDriveEventKind.GREEN_LAUNCH:
+    case AutoDriveEventKind.SUMMIT_CREST:
+      return 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300';
+    case AutoDriveEventKind.TRAFFIC_JAM:
+    case AutoDriveEventKind.HEAVY_TRAFFIC:
+    case AutoDriveEventKind.TRAFFIC_SLOWDOWN:
+    case AutoDriveEventKind.MOUNTAIN_CLIMB:
+      return 'bg-amber-500/20 border-amber-500/50 text-amber-300';
+    case AutoDriveEventKind.OVERTAKE:
+    case AutoDriveEventKind.HIGHWAY_MERGE:
+    case AutoDriveEventKind.MOUNTAIN_DESCENT:
+      return 'bg-violet-500/25 border-violet-400/55 text-violet-200';
+    default:
+      return 'bg-cyan-500/20 border-cyan-500/45 text-cyan-300';
+  }
+}
+
+function getAutoDriveModeLabel(mode: AutoDriveMode): string {
+  if (mode === AutoDriveMode.CITY) return 'CITY AUTO';
+  if (mode === AutoDriveMode.HIGHWAY) return 'HWY AUTO';
+  if (mode === AutoDriveMode.MOUNTAIN) return 'MTN AUTO';
+  return 'AUTO';
+}
+
 interface BottomControlDockProps {
   activeTab: WorkspaceTab;
   onSelectTab: (tab: WorkspaceTab) => void;
@@ -42,6 +71,7 @@ interface BottomControlDockProps {
   onSelectAutoDriveMode: (mode: AutoDriveMode) => void;
   onThrottleChange: (val: number) => void;
   onBrakeChange: (val: number) => void;
+  onNetPowerChange: (netPercent: number) => void;
   onRoadGradeChange: (val: number) => void;
 
   onSelectOperationMode: (modeId: OperationModeId) => void;
@@ -76,15 +106,15 @@ const PowerAndBrakingSplitCard: React.FC<{
 
   return (
     <div
-      className={`flex px-2.5 py-1.5 rounded-lg bg-slate-900/45 border border-slate-700/45 w-full min-w-0 overflow-hidden ${
+      className={`flex px-1 min-[760px]:px-1.5 py-1 rounded-lg bg-slate-900/45 border border-slate-700/45 w-full min-w-0 overflow-hidden ${
         horizontal
-          ? 'flex-col md:flex-row md:items-center gap-2.5 md:gap-4'
-          : 'flex-col justify-between gap-1.5'
+          ? 'flex-col md:flex-row md:items-center gap-2 md:gap-4'
+          : 'flex-col justify-between gap-0.5'
       } ${className}`}
     >
       {/* 1. ICE vs EV Power & Torque Split + Combined System Power */}
-      <div className="flex-1 min-w-0 space-y-1">
-        <div className="flex items-center justify-between gap-1 text-[10.5px] font-mono tabular-nums whitespace-nowrap">
+      <div className="flex-1 min-w-0 space-y-0.5">
+        <div className="flex items-center justify-between gap-0.5 text-[7.5px] min-[760px]:text-[8.5px] min-[960px]:text-[9.5px] font-mono tabular-nums whitespace-nowrap">
           <span className="text-red-400 font-semibold">ICE {prop.icePercent}%</span>
           <span
             className="text-slate-100 font-semibold"
@@ -92,12 +122,13 @@ const PowerAndBrakingSplitCard: React.FC<{
               prop.combinedKw
             )} kW)`}
           >
-            Comb {Math.round(prop.combinedHp)} hp
+            <span className="hidden min-[1020px]:inline">Comb </span>
+            {Math.round(prop.combinedHp)}hp
           </span>
           <span className="text-cyan-400 font-semibold text-right">{prop.evPercent}% EV</span>
         </div>
 
-        <div className="h-2 w-full rounded-full bg-slate-800 overflow-hidden flex">
+        <div className="h-1.5 w-full rounded-full bg-slate-800 overflow-hidden flex">
           {propActive && (
             <>
               <div
@@ -112,33 +143,41 @@ const PowerAndBrakingSplitCard: React.FC<{
           )}
         </div>
 
-        <div className="flex items-center justify-between text-[10.5px] font-mono text-slate-300 whitespace-nowrap">
+        <div className="flex items-center justify-between text-[7px] min-[760px]:text-[8px] min-[960px]:text-[9px] font-mono tabular-nums text-slate-300 whitespace-nowrap">
           <span className="text-red-200/95">
-            {Math.round(prop.iceHp)} hp · {Math.round(prop.iceTorqueNm)} Nm
+            {Math.round(prop.iceHp)}hp·{Math.round(prop.iceTorqueNm)}Nm
           </span>
           <span className="text-cyan-200/95">
-            {Math.round(prop.evHp)} hp · {Math.round(prop.evTorqueNm)} Nm
+            {Math.round(prop.evHp)}hp·{Math.round(prop.evTorqueNm)}Nm
           </span>
         </div>
       </div>
 
       {horizontal ? (
-        <div className="hidden md:block w-px h-10 bg-slate-700/60" />
+        <div className="hidden md:block w-px h-8 bg-slate-700/60" />
       ) : (
         <div className="border-t border-slate-800/80" />
       )}
 
       {/* 2. Regenerative vs Mechanical Braking Split */}
-      <div className="flex-1 min-w-0 space-y-1">
-        <div className="flex items-center justify-between gap-1.5 text-[11px] font-mono whitespace-nowrap">
-          <span className="text-emerald-400 font-semibold">Regen {brk.regenPercent}%</span>
-          <span className="text-[10.5px] text-slate-400">
-            {totalBrakeHp > 0 ? `Brake ${totalBrakeHp} hp` : 'Braking 0 hp'}
+      <div className="flex-1 min-w-0 space-y-0.5">
+        <div className="flex items-center justify-between gap-0.5 text-[7.5px] min-[760px]:text-[8.5px] min-[960px]:text-[9.5px] font-mono tabular-nums whitespace-nowrap">
+          <span className="text-emerald-400 font-semibold">
+            <span className="min-[960px]:hidden">Reg </span>
+            <span className="hidden min-[960px]:inline">Regen </span>
+            {brk.regenPercent}%
           </span>
-          <span className="text-amber-400 font-semibold text-right">{brk.mechPercent}% Mech</span>
+          <span className="text-slate-400">
+            {totalBrakeHp > 0 ? `${totalBrakeHp}hp` : '0hp'}
+          </span>
+          <span className="text-amber-400 font-semibold text-right">
+            {brk.mechPercent}%
+            <span className="min-[960px]:hidden"> Mch</span>
+            <span className="hidden min-[960px]:inline"> Mech</span>
+          </span>
         </div>
 
-        <div className="h-2 w-full rounded-full bg-slate-800 overflow-hidden flex">
+        <div className="h-1.5 w-full rounded-full bg-slate-800 overflow-hidden flex">
           {brkActive && (
             <>
               <div
@@ -153,47 +192,18 @@ const PowerAndBrakingSplitCard: React.FC<{
           )}
         </div>
 
-        <div className="flex items-center justify-between text-[10.5px] font-mono text-slate-300 whitespace-nowrap">
+        <div className="flex items-center justify-between text-[7px] min-[760px]:text-[8px] min-[960px]:text-[9px] font-mono tabular-nums text-slate-300 whitespace-nowrap">
           <span className="text-emerald-200/95">
-            {Math.round(brk.regenHp)} hp · {Math.round(brk.regenTorqueNm)} Nm
+            {Math.round(brk.regenHp)}hp·{Math.round(brk.regenTorqueNm)}Nm
           </span>
           <span className="text-amber-200/95">
-            {Math.round(brk.mechHp)} hp · {Math.round(brk.mechTorqueNm)} Nm
+            {Math.round(brk.mechHp)}hp·{Math.round(brk.mechTorqueNm)}Nm
           </span>
         </div>
       </div>
     </div>
   );
 };
-
-function getAutoDriveEventBadgeClass(kind: AutoDriveEventKind): string {
-  switch (kind) {
-    case AutoDriveEventKind.RED_LIGHT_BRAKE:
-    case AutoDriveEventKind.RED_LIGHT_WAIT:
-      return 'bg-red-500/20 border-red-500/50 text-red-300';
-    case AutoDriveEventKind.GREEN_LAUNCH:
-    case AutoDriveEventKind.SUMMIT_CREST:
-      return 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300';
-    case AutoDriveEventKind.TRAFFIC_JAM:
-    case AutoDriveEventKind.HEAVY_TRAFFIC:
-    case AutoDriveEventKind.TRAFFIC_SLOWDOWN:
-    case AutoDriveEventKind.MOUNTAIN_CLIMB:
-      return 'bg-amber-500/20 border-amber-500/50 text-amber-300';
-    case AutoDriveEventKind.OVERTAKE:
-    case AutoDriveEventKind.HIGHWAY_MERGE:
-    case AutoDriveEventKind.MOUNTAIN_DESCENT:
-      return 'bg-violet-500/25 border-violet-400/55 text-violet-200';
-    default:
-      return 'bg-cyan-500/20 border-cyan-500/45 text-cyan-300';
-  }
-}
-
-function getAutoDriveModeLabel(mode: AutoDriveMode): string {
-  if (mode === AutoDriveMode.CITY) return 'CITY AUTO';
-  if (mode === AutoDriveMode.HIGHWAY) return 'HWY AUTO';
-  if (mode === AutoDriveMode.MOUNTAIN) return 'MTN AUTO';
-  return 'AUTO';
-}
 
 export const BottomControlDock: React.FC<BottomControlDockProps> = ({
   activeTab,
@@ -207,6 +217,7 @@ export const BottomControlDock: React.FC<BottomControlDockProps> = ({
   onSelectAutoDriveMode,
   onThrottleChange,
   onBrakeChange,
+  onNetPowerChange,
   onRoadGradeChange,
   onSelectOperationMode,
   solveTarget,
@@ -237,16 +248,24 @@ export const BottomControlDock: React.FC<BottomControlDockProps> = ({
   };
 
   const roundedGrade = Math.round(state.roadGradePercent);
+  const netPowerPercent =
+    state.brakePercent > 0.5
+      ? -Math.round(state.brakePercent)
+      : Math.round(state.throttlePercent);
+  const netWheelHp =
+    state.brakingSplit.regenHp + state.brakingSplit.mechHp > 0.5 && state.propulsionSplit.combinedHp < 0.5
+      ? -Math.round(state.brakingSplit.regenHp + state.brakingSplit.mechHp)
+      : Math.round(state.propulsionSplit.combinedHp);
 
   return (
     <div
       id="bottom-control-dock"
-      className={`fixed bottom-2 left-1/2 -translate-x-1/2 z-30 w-[min(1152px,97vw)] max-w-[calc(100vw-12px)] transition-transform duration-200 ease-out ${
-        collapsed ? 'translate-y-[calc(100%-32px)]' : 'translate-y-0'
+      className={`fixed bottom-1.5 left-1/2 -translate-x-1/2 z-30 w-[min(1120px,99vw)] max-w-[calc(100vw-6px)] transition-transform duration-200 ease-out ${
+        collapsed ? 'translate-y-[calc(100%-26px)]' : 'translate-y-0'
       }`}
     >
-      {/* Top Control Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1.5 px-0.5">
+      {/* Top Control Bar (Tabs & Quick Actions) */}
+      <div className="flex flex-wrap items-center justify-between gap-1 mb-1 px-0.5">
         <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-slate-950/75 border border-slate-700/60">
           {(
             [
@@ -262,7 +281,7 @@ export const BottomControlDock: React.FC<BottomControlDockProps> = ({
                 onSelectTab(t.id);
                 if (collapsed) onToggleCollapse();
               }}
-              className={`px-3 py-0.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
+              className={`px-2.5 py-0.5 text-[11px] font-medium rounded-md transition-colors whitespace-nowrap ${
                 activeTab === t.id
                   ? 'bg-slate-100 text-slate-950 font-semibold'
                   : 'text-slate-300 hover:text-white'
@@ -273,15 +292,15 @@ export const BottomControlDock: React.FC<BottomControlDockProps> = ({
           ))}
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1">
           {/* Slow-Mo Selector (1x · 0.5x · 0.25x) */}
           <div
-            className={`flex items-center gap-0.5 p-0.5 rounded-lg bg-slate-950/75 border text-[11.5px] ${
+            className={`flex items-center gap-0.5 p-0.5 rounded-lg bg-slate-950/75 border text-[11px] ${
               timeScale < 1 ? 'border-amber-500/55' : 'border-slate-700/60'
             }`}
             title="Slow-Motion Speed Control (1x, 0.5x, 0.25x)"
           >
-            <span className="px-1.5 text-slate-400 whitespace-nowrap">Slow-Mo</span>
+            <span className="hidden md:inline px-1 text-slate-400 whitespace-nowrap">Slow-Mo</span>
             {(
               [
                 { val: 1, label: '1x' },
@@ -382,128 +401,146 @@ export const BottomControlDock: React.FC<BottomControlDockProps> = ({
         </div>
       </div>
 
-      {/* Translucent Wider Dock Surface */}
-      <div className="rounded-xl bg-slate-950/62 border border-slate-700/55 shadow-xl p-2.5 space-y-2 overflow-x-hidden max-h-[calc(100vh-46px)] overflow-y-auto">
-        {/* 2-ROW HYBRID STAGE STATUS + LIVE AUTODRIVE SCENARIO BANNER (Never Cut Off) */}
-        <div className="px-2.5 py-1.5 rounded-lg bg-slate-900/58 border border-slate-700/45 text-xs leading-snug space-y-1">
-          {activeTab === WorkspaceTab.SIMULATOR && state.autoDrive.mode !== AutoDriveMode.OFF && (
-            <div className="flex flex-wrap items-center gap-1.5 pb-1 border-b border-slate-700/45">
-              <span className="px-1.5 py-0.5 rounded bg-sky-500/20 border border-sky-400/50 font-mono font-bold text-[10.5px] text-sky-200 whitespace-nowrap shrink-0">
-                {getAutoDriveModeLabel(state.autoDrive.mode)}
-              </span>
+      {/* Live Drive & Hybrid System Status Bar (Placed under tabs, above dock surface) */}
+      <div className="mb-1 px-2.5 py-1.5 rounded-xl bg-slate-950/88 border border-slate-700/65 shadow-lg text-[11px] text-slate-200 space-y-1">
+        {/* Row 1: Drive Status */}
+        <div className="flex flex-wrap items-center gap-1.5 pb-1 border-b border-slate-800/80">
+          {autoDriveMode !== AutoDriveMode.OFF ? (
+            <>
               <span
-                className={`px-1.5 py-0.5 rounded border font-mono font-bold text-[10.5px] whitespace-nowrap shrink-0 ${getAutoDriveEventBadgeClass(
+                className={`px-1.5 py-0.5 rounded text-[10px] font-bold border shrink-0 whitespace-nowrap ${getAutoDriveEventBadgeClass(
                   state.autoDrive.eventKind
                 )}`}
               >
-                {state.autoDrive.eventBadge}
+                {getAutoDriveModeLabel(autoDriveMode)}: {state.autoDrive.eventBadge}
               </span>
-              <span className="px-1.5 py-0.5 rounded bg-slate-950/70 border border-slate-700/60 font-mono text-[10.5px] text-slate-300 whitespace-nowrap shrink-0">
+              <span className="px-1.5 py-0.5 rounded bg-slate-900/85 border border-slate-700/60 font-mono tabular-nums text-[10px] text-slate-300 whitespace-nowrap shrink-0">
                 {state.autoDrive.targetSpeedKmh > 0
                   ? `→ ${state.autoDrive.targetSpeedKmh} km/h`
                   : 'STOP'}
               </span>
-              <span className="text-slate-200 min-w-[180px] flex-1">
+              <span className="text-slate-200 text-[11px]">
                 {state.autoDrive.contextText}
               </span>
-            </div>
-          )}
-
-          {/* Dedicated 2-Row Hybrid Stage Status so neither Title nor Explanation ever cuts off */}
-          <div className="space-y-0.5">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-600/70 font-mono font-bold text-[10.5px] text-slate-100 shrink-0">
-                {state.gear}
+            </>
+          ) : (
+            <>
+              <span className="px-1.5 py-0.5 rounded bg-slate-800/90 border border-slate-700 font-mono font-bold text-[10px] text-slate-200 whitespace-nowrap shrink-0">
+                MANUAL DRIVE
               </span>
-              {state.evIndicatorOn ? (
-                <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/50 font-mono font-bold text-[10.5px] text-emerald-300 whitespace-nowrap shrink-0">
-                  EV
-                </span>
-              ) : state.iceFuelActive ? (
-                <span className="px-1.5 py-0.5 rounded bg-red-500/20 border border-red-500/45 font-mono font-bold text-[10.5px] text-red-300 whitespace-nowrap shrink-0">
-                  ICE
-                </span>
-              ) : Math.abs(state.iceRpm) > 300 ? (
-                <span className="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-500/45 font-mono font-bold text-[10.5px] text-amber-300 whitespace-nowrap shrink-0">
-                  PUMP
-                </span>
-              ) : null}
-              <strong className="text-slate-100 font-semibold text-xs">
-                {state.activePhaseTitle}
-              </strong>
-            </div>
-            <p className="text-slate-300 text-xs leading-snug">
-              {state.activePhaseSummary}
-            </p>
-          </div>
+              <span className="font-mono tabular-nums text-[11px] text-slate-300 whitespace-nowrap">
+                Thr {Math.round(state.throttlePercent)}% · Brk {Math.round(state.brakePercent)}% · Incline{' '}
+                {Math.round(state.roadGradePercent) > 0
+                  ? `+${Math.round(state.roadGradePercent)}%`
+                  : `${Math.round(state.roadGradePercent)}%`}
+              </span>
+            </>
+          )}
         </div>
 
+        {/* Row 2: Hybrid Mode & 2-Row Explanation */}
+        <div className="space-y-0.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-600/70 font-mono font-bold text-[10px] text-slate-100 shrink-0">
+              {state.gear}
+            </span>
+            {state.evIndicatorOn ? (
+              <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/50 font-mono font-bold text-[10px] text-emerald-300 whitespace-nowrap shrink-0">
+                EV
+              </span>
+            ) : state.iceFuelActive ? (
+              <span className="px-1.5 py-0.5 rounded bg-red-500/20 border border-red-500/45 font-mono font-bold text-[10px] text-red-300 whitespace-nowrap shrink-0">
+                ICE
+              </span>
+            ) : Math.abs(state.iceRpm) > 300 ? (
+              <span className="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-500/45 font-mono font-bold text-[10px] text-amber-300 whitespace-nowrap shrink-0">
+                PUMP
+              </span>
+            ) : null}
+            <strong className="text-slate-100 font-semibold text-[11.5px] whitespace-nowrap">
+              {state.activePhaseTitle}
+            </strong>
+          </div>
+          <p className="text-slate-300 text-[11px] leading-snug">
+            {state.activePhaseSummary}
+          </p>
+        </div>
+      </div>
+
+      {/* Compact Translucent Dock Surface */}
+      <div className="rounded-xl bg-slate-950/64 border border-slate-700/55 shadow-xl p-1 overflow-x-hidden max-h-[calc(100vh-40px)] overflow-y-auto">
         {/* ================================================================== */}
-        {/* TAB 1: WIDER 5-COLUMN DRIVING SIMULATOR (Overflow-Proof CSS Grid)   */}
+        {/* TAB 1: EFFICIENT 5-COLUMN DRIVING SIMULATOR                        */}
         {/* ================================================================== */}
         {activeTab === WorkspaceTab.SIMULATOR && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 min-[780px]:grid-cols-6 min-[1080px]:grid-cols-[184px_minmax(178px,0.95fr)_minmax(196px,1.02fr)_minmax(216px,1.16fr)_minmax(212px,1.15fr)] items-stretch gap-2 w-full min-w-0">
-            {/* Column 1: Shift Selector (P R N D B), EV Mode & AutoDrive (Off / City / Hwy / Mtn) */}
-            <div className="min-[780px]:col-span-2 min-[1080px]:col-span-1 flex flex-col justify-between gap-1.5 px-2 py-1.5 rounded-lg bg-slate-900/45 border border-slate-700/45 w-full min-w-0 overflow-hidden">
-              <div className="flex items-center justify-between gap-1.5">
-                <span className="text-[11.5px] text-slate-300 font-medium shrink-0">Gear</span>
-                <div className="flex items-center gap-0.5">
-                  {[
-                    GearPosition.P,
-                    GearPosition.R,
-                    GearPosition.N,
-                    GearPosition.D,
-                    GearPosition.B,
-                  ].map((g) => (
-                    <button
-                      key={g}
-                      type="button"
-                      onClick={() => onGearChange(g)}
-                      className={`w-6 h-5.5 text-[11.5px] font-mono font-bold rounded transition-colors ${
-                        state.gear === g
-                          ? g === GearPosition.P
-                            ? 'bg-sky-400 text-slate-950'
-                            : g === GearPosition.B
-                              ? 'bg-amber-500 text-slate-950'
-                              : g === GearPosition.D
-                                ? 'bg-emerald-500 text-slate-950'
-                                : g === GearPosition.R
-                                  ? 'bg-red-500 text-white'
-                                  : 'bg-slate-200 text-slate-950'
-                          : 'bg-slate-950/65 text-slate-400 hover:text-white border border-slate-800'
-                      }`}
-                    >
-                      {g}
-                    </button>
-                  ))}
-                </div>
+          <div className="grid grid-cols-1 min-[560px]:grid-cols-[0.80fr_1.45fr_1.05fr_1.18fr_1.00fr] items-stretch gap-0.5 min-[760px]:gap-1 w-full min-w-0">
+            {/* COL-1 (LOCKED): Sub-Col-A (Vertical PRNDB, no "Gear" text) + Sub-Col-B (EV Mode, "AutoDrive", Selector) */}
+            <div className="flex items-stretch gap-0.5 min-[760px]:gap-1 px-1 py-1 rounded-lg bg-slate-900/45 border border-slate-700/45 w-full min-w-0 overflow-hidden">
+              {/* Sub-Col-A: Vertical P R N D B buttons only */}
+              <div
+                className="flex flex-col justify-between gap-0.5 shrink-0"
+                aria-label="Transmission Gear Selector"
+              >
+                {[
+                  GearPosition.P,
+                  GearPosition.R,
+                  GearPosition.N,
+                  GearPosition.D,
+                  GearPosition.B,
+                ].map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => onGearChange(g)}
+                    className={`w-4 min-[920px]:w-5 h-[13px] min-[920px]:h-[14px] text-[9px] min-[920px]:text-[9.5px] leading-none font-mono font-bold rounded flex items-center justify-center transition-colors ${
+                      state.gear === g
+                        ? g === GearPosition.P
+                          ? 'bg-sky-400 text-slate-950'
+                          : g === GearPosition.B
+                            ? 'bg-amber-500 text-slate-950'
+                            : g === GearPosition.D
+                              ? 'bg-emerald-500 text-slate-950'
+                              : g === GearPosition.R
+                                ? 'bg-red-500 text-white'
+                                : 'bg-slate-200 text-slate-950'
+                        : 'bg-slate-950/70 text-slate-400 hover:text-white border border-slate-800'
+                    }`}
+                  >
+                    {g}
+                  </button>
+                ))}
               </div>
 
-              <div className="flex items-center justify-between gap-1.5">
-                <span className="text-[11.5px] text-slate-300 font-medium shrink-0">Drive</span>
+              {/* Sub-Col-B: EV Mode button, text "AutoDrive", AutoDrive selector stacked vertically */}
+              <div className="flex-1 min-w-0 flex flex-col justify-between gap-0.5 pl-0.5 min-[760px]:pl-1 border-l border-slate-800/85">
                 <button
                   type="button"
                   onClick={onToggleEvMode}
                   title="Dedicated EV Mode (<= 50 km/h when SoC >= 36%)"
-                  className={`inline-flex items-center justify-center gap-1.5 px-2.5 h-5.5 rounded text-[11px] font-semibold border transition-colors whitespace-nowrap ${
+                  className={`inline-flex items-center justify-center gap-0.5 px-0.5 h-[16px] min-[920px]:h-[17px] w-full rounded text-[8.5px] min-[920px]:text-[9.5px] font-semibold border transition-colors whitespace-nowrap ${
                     state.evModeRequested
                       ? 'bg-emerald-500 text-slate-950 border-emerald-300'
                       : 'bg-slate-950/65 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/15'
                   }`}
                 >
-                  <Leaf className="w-3 h-3" />
-                  <span>{state.evModeRequested ? 'EV Mode ON' : 'EV Mode'}</span>
-                </button>
-              </div>
-
-              <div className="space-y-0.5">
-                <div className="flex items-center justify-between text-[10.5px] text-slate-400 leading-none">
-                  <span>AutoDrive</span>
-                  <span className="font-mono text-slate-300">
-                    {autoDriveMode === AutoDriveMode.OFF ? 'Manual' : autoDriveMode}
+                  <Leaf className="w-2.5 h-2.5 shrink-0" />
+                  <span>
+                    {state.evModeRequested ? (
+                      'EV ON'
+                    ) : (
+                      <>
+                        <span className="min-[920px]:hidden">EV</span>
+                        <span className="hidden min-[920px]:inline">EV Mode</span>
+                      </>
+                    )}
                   </span>
-                </div>
-                <div className="grid grid-cols-4 gap-0.5 p-0.5 rounded bg-slate-950/70 border border-slate-800">
+                </button>
+
+                <span className="text-[8px] min-[920px]:text-[8.5px] font-medium text-slate-400 leading-none text-center whitespace-nowrap">
+                  AutoDrive
+                </span>
+
+                <div className="grid grid-cols-2 gap-0.5 p-0.5 rounded bg-slate-950/70 border border-slate-800">
                   {(
                     [
                       { id: AutoDriveMode.OFF, label: 'Off', title: 'Manual Driving' },
@@ -523,7 +560,7 @@ export const BottomControlDock: React.FC<BottomControlDockProps> = ({
                         type="button"
                         title={m.title}
                         onClick={() => onSelectAutoDriveMode(m.id)}
-                        className={`py-0.5 rounded text-[11px] font-medium transition-colors whitespace-nowrap ${
+                        className={`h-[15px] min-[920px]:h-[16px] rounded text-[8.5px] min-[920px]:text-[9px] leading-none font-medium transition-colors whitespace-nowrap ${
                           active
                             ? m.id === AutoDriveMode.OFF
                               ? 'bg-slate-200 text-slate-950 font-semibold'
@@ -543,11 +580,19 @@ export const BottomControlDock: React.FC<BottomControlDockProps> = ({
               </div>
             </div>
 
-            {/* Column 2: Throttle, Brake & Road Incline (-50% to +50%) */}
-            <div className="min-[780px]:col-span-2 min-[1080px]:col-span-1 flex flex-col justify-between gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-900/45 border border-slate-700/45 w-full min-w-0 overflow-hidden">
-              <div className="flex items-center gap-1.5 text-[11.5px] min-w-0">
-                <label htmlFor="sim-throttle" className="w-12 text-slate-200 shrink-0">
-                  Throttle
+            {/* COL-2: Sub-Col-A (Power Meter) + Sub-Col-B (ODO, AVG, FUEL stacked vertically) */}
+            <HybridPowerMeter state={state} />
+
+            {/* COL-3: Throttle, Brake & Incline Sliders */}
+            <div className="flex flex-col justify-between gap-1 px-1 min-[760px]:px-1.5 py-1 rounded-lg bg-slate-900/45 border border-slate-700/45 w-full min-w-0 overflow-hidden">
+              <div className="flex items-center gap-0.5 min-[760px]:gap-1 text-[8.5px] min-[760px]:text-[9.5px] min-[960px]:text-[10px] min-w-0">
+                <label
+                  htmlFor="sim-throttle"
+                  title="Throttle (0–100%)"
+                  className="w-5 min-[960px]:w-10 text-slate-200 shrink-0 whitespace-nowrap"
+                >
+                  <span className="min-[960px]:hidden">Thr</span>
+                  <span className="hidden min-[960px]:inline">Throttle</span>
                 </label>
                 <input
                   id="sim-throttle"
@@ -559,14 +604,19 @@ export const BottomControlDock: React.FC<BottomControlDockProps> = ({
                   onChange={(e) => onThrottleChange(Number(e.target.value))}
                   className="ths-slider flex-1 min-w-0 text-emerald-400"
                 />
-                <span className="w-9 text-right font-mono tabular-nums text-emerald-400 shrink-0 whitespace-nowrap">
+                <span className="w-6 min-[760px]:w-7 text-right font-mono tabular-nums text-emerald-400 shrink-0 whitespace-nowrap">
                   {Math.round(state.throttlePercent)}%
                 </span>
               </div>
 
-              <div className="flex items-center gap-1.5 text-[11.5px] min-w-0">
-                <label htmlFor="sim-brake" className="w-12 text-slate-200 shrink-0">
-                  Brake
+              <div className="flex items-center gap-0.5 min-[760px]:gap-1 text-[8.5px] min-[760px]:text-[9.5px] min-[960px]:text-[10px] min-w-0">
+                <label
+                  htmlFor="sim-brake"
+                  title="Brake (0–100%)"
+                  className="w-5 min-[960px]:w-10 text-slate-200 shrink-0 whitespace-nowrap"
+                >
+                  <span className="min-[960px]:hidden">Brk</span>
+                  <span className="hidden min-[960px]:inline">Brake</span>
                 </label>
                 <input
                   id="sim-brake"
@@ -578,14 +628,19 @@ export const BottomControlDock: React.FC<BottomControlDockProps> = ({
                   onChange={(e) => onBrakeChange(Number(e.target.value))}
                   className="ths-slider flex-1 min-w-0 text-red-400"
                 />
-                <span className="w-9 text-right font-mono tabular-nums text-red-400 shrink-0 whitespace-nowrap">
+                <span className="w-6 min-[760px]:w-7 text-right font-mono tabular-nums text-red-400 shrink-0 whitespace-nowrap">
                   {Math.round(state.brakePercent)}%
                 </span>
               </div>
 
-              <div className="flex items-center gap-1.5 text-[11.5px] min-w-0">
-                <label htmlFor="sim-grade" className="w-12 text-slate-200 shrink-0">
-                  Incline
+              <div className="flex items-center gap-0.5 min-[760px]:gap-1 text-[8.5px] min-[760px]:text-[9.5px] min-[960px]:text-[10px] min-w-0">
+                <label
+                  htmlFor="sim-grade"
+                  title="Road Incline (-50% to +50%)"
+                  className="w-5 min-[960px]:w-10 text-slate-200 shrink-0 whitespace-nowrap"
+                >
+                  <span className="min-[960px]:hidden">Inc</span>
+                  <span className="hidden min-[960px]:inline">Incline</span>
                 </label>
                 <input
                   id="sim-grade"
@@ -601,31 +656,18 @@ export const BottomControlDock: React.FC<BottomControlDockProps> = ({
                   type="button"
                   onClick={() => onRoadGradeChange(0)}
                   title="Road Incline (-50% to +50%). Click value to reset to 0%."
-                  className="w-9 text-right font-mono tabular-nums text-amber-300 hover:text-white shrink-0 whitespace-nowrap"
+                  className="w-6 min-[760px]:w-7 text-right font-mono tabular-nums text-amber-300 hover:text-white shrink-0 whitespace-nowrap"
                 >
                   {roundedGrade > 0 ? `+${roundedGrade}%` : `${roundedGrade}%`}
                 </button>
               </div>
             </div>
 
-            {/* Column 3: HSI Power Meter, Speedometer & Trip ODO / km/L / Fuel L */}
-            <HybridPowerMeter
-              state={state}
-              className="min-[780px]:col-span-2 min-[1080px]:col-span-1"
-            />
+            {/* COL-4: Power & Decel Split Indicator */}
+            <PowerAndBrakingSplitCard state={state} />
 
-            {/* Column 4: Combined Power + ICE/EV & Regen/Mech Splits */}
-            <PowerAndBrakingSplitCard
-              state={state}
-              className="min-[780px]:col-span-3 min-[1080px]:col-span-1"
-            />
-
-            {/* Column 5: Enlarged Full-Frame Car Energy Flow Diagram */}
-            <CarEnergyFlowPreview
-              state={state}
-              timeScale={timeScale}
-              className="sm:col-span-2 min-[780px]:col-span-3 min-[1080px]:col-span-1"
-            />
+            {/* COL-5 (LOCKED): Miniature Car Energy Flow */}
+            <CarEnergyFlowPreview state={state} timeScale={timeScale} />
           </div>
         )}
 
