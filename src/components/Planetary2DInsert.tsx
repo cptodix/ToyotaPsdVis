@@ -1,6 +1,6 @@
 import React, { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { getRotationDirection, PSD_CONSTANTS } from '../simulation/ths5Engine';
+import { getRotationDirection, PSD_CONSTANTS } from '../drivetrain';
 import { COMPONENT_COLORS, PowertrainState, RotationDir } from '../types/hybrid';
 
 interface Planetary2DInsertProps {

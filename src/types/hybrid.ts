@@ -31,6 +31,11 @@ export enum CameraPresetId {
   WHEEL_DIFF = 'WHEEL_DIFF',
 }
 
+export enum AnimationSpeedMode {
+  NORMAL = 'NORMAL',
+  REALISTIC = 'REALISTIC',
+}
+
 export enum OperationModeId {
   STOP = 'STOP',
   IDLE_CHARGE = 'IDLE_CHARGE',
@@ -95,18 +100,45 @@ export enum AutoDriveEventKind {
   NONE = 'NONE',
   GREEN_LAUNCH = 'GREEN_LAUNCH',
   URBAN_FLOW = 'URBAN_FLOW',
+  URBAN_COAST_GLIDE = 'URBAN_COAST_GLIDE',
   HEAVY_TRAFFIC = 'HEAVY_TRAFFIC',
   TRAFFIC_JAM = 'TRAFFIC_JAM',
   RED_LIGHT_BRAKE = 'RED_LIGHT_BRAKE',
   RED_LIGHT_WAIT = 'RED_LIGHT_WAIT',
+  SCHOOL_ZONE = 'SCHOOL_ZONE',
+  SPEED_BUMP_CALMING = 'SPEED_BUMP_CALMING',
+  ROUNDABOUT_YIELD = 'ROUNDABOUT_YIELD',
+  PEDESTRIAN_CROSSWALK = 'PEDESTRIAN_CROSSWALK',
+  BUS_LANE_PAUSE = 'BUS_LANE_PAUSE',
+  FLYOVER_RAMP = 'FLYOVER_RAMP',
+  CITY_ENTRY_BOULEVARD = 'CITY_ENTRY_BOULEVARD',
+  ARTERIAL_FEEDER = 'ARTERIAL_FEEDER',
   HIGHWAY_MERGE = 'HIGHWAY_MERGE',
   HIGHWAY_CRUISE = 'HIGHWAY_CRUISE',
+  ECO_CRUISE_GLIDE = 'ECO_CRUISE_GLIDE',
+  FAST_LANE_SPRINT = 'FAST_LANE_SPRINT',
   TRAFFIC_SLOWDOWN = 'TRAFFIC_SLOWDOWN',
+  TRUCK_CONVOY_PACE = 'TRUCK_CONVOY_PACE',
   OVERTAKE = 'OVERTAKE',
+  TOLL_PLAZA_APPROACH = 'TOLL_PLAZA_APPROACH',
+  WORK_ZONE_LANE_DROP = 'WORK_ZONE_LANE_DROP',
+  HIGHWAY_VIADUCT = 'HIGHWAY_VIADUCT',
+  RAIN_SPRAY_CAUTION = 'RAIN_SPRAY_CAUTION',
+  HIGHWAY_OFFRAMP = 'HIGHWAY_OFFRAMP',
+  SUBURBAN_CONNECTOR = 'SUBURBAN_CONNECTOR',
+  FOOTHILLS_APPROACH = 'FOOTHILLS_APPROACH',
   COUNTRYSIDE_WINDING = 'COUNTRYSIDE_WINDING',
+  ROLLING_RIVER_VALLEY = 'ROLLING_RIVER_VALLEY',
+  VILLAGE_MOUNTAIN_PASS = 'VILLAGE_MOUNTAIN_PASS',
   MOUNTAIN_CLIMB = 'MOUNTAIN_CLIMB',
+  SLOW_TRUCK_TAIL = 'SLOW_TRUCK_TAIL',
+  MOUNTAIN_PASSING_ZONE = 'MOUNTAIN_PASSING_ZONE',
+  HAIRPIN_SWITCHBACK = 'HAIRPIN_SWITCHBACK',
   SUMMIT_CREST = 'SUMMIT_CREST',
+  SCENIC_LOOKOUT_SLOW = 'SCENIC_LOOKOUT_SLOW',
   MOUNTAIN_DESCENT = 'MOUNTAIN_DESCENT',
+  STEEP_CANYON_PLUNGE = 'STEEP_CANYON_PLUNGE',
+  VALLEY_LEVELOUT = 'VALLEY_LEVELOUT',
 }
 
 export interface AutoDriveStatus {
@@ -171,6 +203,22 @@ export interface OperationModeSpec {
   hsiZone: HsiZone;
 }
 
+export type PsdLogCategory = 'HYBRID' | 'FLOW' | 'ROTATION';
+
+export interface PsdLogEntry {
+  id: number;
+  timestampLabel: string;
+  categories: PsdLogCategory[];
+  title: string;
+  explanation: string;
+  speedKmh: number;
+  iceRpm: number;
+  mg1Rpm: number;
+  mg2Rpm: number;
+  wheelRpm: number;
+  batteryKw: number;
+}
+
 export interface ComponentColorSpec {
   id: 'ice' | 'mg1' | 'mg2' | 'wheel' | 'battery';
   name: string;
@@ -233,7 +281,7 @@ export const COMPONENT_COLORS: Record<
   },
   battery: {
     id: 'battery',
-    name: 'Li-Ion HV Battery',
+    name: 'NiMH HV Battery',
     shortName: 'HV Batt',
     gearPart: 'PCU Inverter',
     hex: '#10b981',
@@ -243,3 +291,19 @@ export const COMPONENT_COLORS: Record<
     borderClass: 'border-emerald-500/40',
   },
 };
+
+export enum IceCombustionMode {
+  STOPPED = 'STOPPED',
+  PRODUCING_POWER = 'PRODUCING_POWER',
+  FIRING_IDLE = 'FIRING_IDLE',
+  MOTORING_AIR_PUMP = 'MOTORING_AIR_PUMP',
+  SPINNING_FUEL_CUT = 'SPINNING_FUEL_CUT',
+}
+
+export interface IceOperatingStatus {
+  mode: IceCombustionMode;
+  isCombusting: boolean;
+  loadFraction: number;
+  badgeText: string;
+  badgeTone: 'power' | 'idle' | 'unfueled' | 'off';
+}

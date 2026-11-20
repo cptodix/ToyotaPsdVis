@@ -2,11 +2,11 @@ import { PowertrainState } from '../types/hybrid';
 
 /**
  * Procedural Web Audio synthesizer modeling the real acoustic signature of a
- * 5th-Generation Toyota Hybrid System (THS V):
- *  1. Low-speed EV Pedestrian Acoustic Vehicle Alerting System (AVAS harmonic chord, 1–34 km/h)
- *  2. PCU Inverter & MG2 / MG1 Electric Motor / Regenerative Braking Whine
+ * Toyota Innova Zenix Hybrid (5th-Gen THS V — 2.0L M20A-FXS + 1VM + NiMH):
+ *  1. Low-speed EV Pedestrian Acoustic Vehicle Alerting System (AVAS harmonic chord, 1–32 km/h)
+ *  2. Warm MPV-insulated PCU Inverter & MG2 / MG1 Electric Motor / Regenerative Braking Whine
  *  3. 2.0L 4-Cylinder Atkinson ICE Combustion vs. Fuel-Cut B-Mode Air-Pumping Compression
- *  4. Subtle Tire / Dynamometer Rolling Sound
+ *  4. Weighty 2,020 kg MPV Tire / Chassis Rolling Hum
  */
 export class HybridAudioEngine {
   private ctx: AudioContext | null = null;
@@ -90,18 +90,18 @@ export class HybridAudioEngine {
       this.masterGain.connect(compressor);
       compressor.connect(ctx.destination);
 
-      // --- 1. Toyota EV AVAS Chord (293 Hz + 440 Hz warm futuristic fifth) ---
+      // --- 1. Toyota EV AVAS Chord (warm MPV-damped fifth) ---
       this.avasOsc1 = ctx.createOscillator();
       this.avasOsc1.type = 'sine';
-      this.avasOsc1.frequency.value = 294;
+      this.avasOsc1.frequency.value = 282;
 
       this.avasOsc2 = ctx.createOscillator();
       this.avasOsc2.type = 'triangle';
-      this.avasOsc2.frequency.value = 441;
+      this.avasOsc2.frequency.value = 423;
 
       const avasFilter = ctx.createBiquadFilter();
       avasFilter.type = 'lowpass';
-      avasFilter.frequency.value = 950;
+      avasFilter.frequency.value = 820;
 
       this.avasGain = ctx.createGain();
       this.avasGain.gain.value = 0;
@@ -117,14 +117,14 @@ export class HybridAudioEngine {
       // --- 2A. MG2 Traction & Regen Inverter Whine ---
       this.mg2Osc = ctx.createOscillator();
       this.mg2Osc.type = 'sine';
-      this.mg2Osc.frequency.value = 220;
+      this.mg2Osc.frequency.value = 210;
 
       this.mg2HarmOsc = ctx.createOscillator();
       this.mg2HarmOsc.type = 'triangle';
-      this.mg2HarmOsc.frequency.value = 660;
+      this.mg2HarmOsc.frequency.value = 420;
 
       const mg2HarmScale = ctx.createGain();
-      mg2HarmScale.gain.value = 0.25;
+      mg2HarmScale.gain.value = 0.18;
 
       this.mg2Gain = ctx.createGain();
       this.mg2Gain.gain.value = 0;
@@ -140,7 +140,7 @@ export class HybridAudioEngine {
       // --- 2B. MG1 Sun Generator / Cranking Whine ---
       this.mg1Osc = ctx.createOscillator();
       this.mg1Osc.type = 'sine';
-      this.mg1Osc.frequency.value = 320;
+      this.mg1Osc.frequency.value = 300;
 
       this.mg1Gain = ctx.createGain();
       this.mg1Gain.gain.value = 0;
@@ -149,22 +149,22 @@ export class HybridAudioEngine {
       this.mg1Gain.connect(this.masterGain);
       this.mg1Osc.start();
 
-      // --- 3A. 4-Cylinder Atkinson ICE Combustion ---
+      // --- 3A. 2.0L M20A-FXS 4-Cylinder Atkinson ICE Combustion (MPV-insulated deep timbre) ---
       this.iceCombOsc = ctx.createOscillator();
       this.iceCombOsc.type = 'sawtooth';
-      this.iceCombOsc.frequency.value = 42;
+      this.iceCombOsc.frequency.value = 40;
 
       this.iceSubOsc = ctx.createOscillator();
       this.iceSubOsc.type = 'triangle';
-      this.iceSubOsc.frequency.value = 21;
+      this.iceSubOsc.frequency.value = 20;
 
       const subMix = ctx.createGain();
-      subMix.gain.value = 0.55;
+      subMix.gain.value = 0.68;
 
       this.iceFilter = ctx.createBiquadFilter();
       this.iceFilter.type = 'lowpass';
-      this.iceFilter.frequency.value = 180;
-      this.iceFilter.Q.value = 1.8;
+      this.iceFilter.frequency.value = 165;
+      this.iceFilter.Q.value = 1.5;
 
       this.iceCombGain = ctx.createGain();
       this.iceCombGain.gain.value = 0;
@@ -201,8 +201,8 @@ export class HybridAudioEngine {
 
       this.pumpNoiseFilter = ctx.createBiquadFilter();
       this.pumpNoiseFilter.type = 'bandpass';
-      this.pumpNoiseFilter.frequency.value = 140;
-      this.pumpNoiseFilter.Q.value = 2.4;
+      this.pumpNoiseFilter.frequency.value = 132;
+      this.pumpNoiseFilter.Q.value = 2.2;
 
       this.pumpGain = ctx.createGain();
       this.pumpGain.gain.value = 0;
@@ -212,15 +212,15 @@ export class HybridAudioEngine {
       this.pumpGain.connect(this.masterGain);
       pumpSource.start();
 
-      // --- 4. Tire / Dyno Rolling Hum ---
+      // --- 4. Heavy MPV Tire / Road Rolling Hum ---
       const roadSource = ctx.createBufferSource();
       roadSource.buffer = noiseBuf;
       roadSource.loop = true;
 
       this.roadFilter = ctx.createBiquadFilter();
       this.roadFilter.type = 'bandpass';
-      this.roadFilter.frequency.value = 160;
-      this.roadFilter.Q.value = 0.9;
+      this.roadFilter.frequency.value = 135;
+      this.roadFilter.Q.value = 0.8;
 
       this.roadGain = ctx.createGain();
       this.roadGain.gain.value = 0;
@@ -251,66 +251,67 @@ export class HybridAudioEngine {
     const absMg1Rpm = Math.abs(state.mg1Rpm);
     const absMg2Rpm = Math.abs(state.mg2Rpm);
 
-    // 1. Toyota Pedestrian AVAS Acoustic Spaceship Hum (active 0.8 – 35 km/h when ICE is off)
+    // 1. Toyota Innova Zenix EV AVAS Hum (faint pedestrian hum 0.6 – 33 km/h when ICE is off)
     let avasVol = 0;
-    if (!state.iceFuelActive && absSpeed > 0.6 && absSpeed < 36) {
-      const fadeLow = Math.min(1, (absSpeed - 0.6) / 3.5);
-      const fadeHigh = Math.min(1, (36 - absSpeed) / 8.0);
-      avasVol = 0.055 * fadeLow * fadeHigh;
+    if (!state.iceFuelActive && absSpeed > 0.6 && absSpeed < 33) {
+      const fadeLow = Math.min(1, (absSpeed - 0.6) / 3.2);
+      const fadeHigh = Math.min(1, (33 - absSpeed) / 7.5);
+      avasVol = 0.022 * fadeLow * fadeHigh;
     }
-    const avasBaseFreq = 278 + Math.min(40, absSpeed) * 3.1;
+    const avasBaseFreq = 266 + Math.min(34, absSpeed) * 2.85;
     this.avasOsc1.frequency.setTargetAtTime(avasBaseFreq, now, 0.06);
     this.avasOsc2.frequency.setTargetAtTime(avasBaseFreq * 1.498, now, 0.06);
     this.avasGain.gain.setTargetAtTime(avasVol, now, 0.07);
 
-    // 2A. MG2 Traction & Regenerative Braking Whine
+    // 2A. MG2 Traction & Regenerative Braking Whine (subtle & fainter beneath ICE & tire roll)
     const mg2ElecKw = Math.abs(state.flows.mg2ToCounterKw);
-    const mg2Freq = 155 + Math.min(16500, absMg2Rpm) * 0.088;
-    const mg2LoadFactor = Math.min(1, 0.18 + mg2ElecKw / 42);
-    const mg2SpeedGate = Math.min(1, absMg2Rpm / 260);
+    const mg2Freq = 148 + Math.min(16500, absMg2Rpm) * 0.082;
+    const mg2LoadFactor = Math.min(1, 0.16 + mg2ElecKw / 46);
+    const mg2SpeedGate = Math.min(1, absMg2Rpm / 250);
     const isRegen = state.flows.mg2ToCounterKw < -0.5;
-    const mg2Vol = mg2SpeedGate * mg2LoadFactor * (isRegen ? 0.095 : 0.068);
+    const mg2Vol = mg2SpeedGate * mg2LoadFactor * (isRegen ? 0.038 : 0.024);
 
     this.mg2Osc.frequency.setTargetAtTime(mg2Freq, now, 0.05);
     this.mg2HarmOsc.frequency.setTargetAtTime(mg2Freq * 2.0, now, 0.05);
     this.mg2Gain.gain.setTargetAtTime(mg2Vol, now, 0.06);
 
-    // 2B. MG1 Generator / Starter Whine
+    // 2B. MG1 Generator / Cranking Whine (subtle electric background)
     const mg1ElecKw = Math.abs(state.flows.mg1ToPcuKw) + Math.abs(state.flows.carrierToSunKw) * 0.5;
-    const mg1Freq = 190 + Math.min(11000, absMg1Rpm) * 0.092;
-    const mg1Vol = Math.min(1, absMg1Rpm / 450) * Math.min(1, 0.12 + mg1ElecKw / 35) * 0.048;
+    const mg1Freq = 182 + Math.min(11000, absMg1Rpm) * 0.086;
+    const mg1Vol = Math.min(1, absMg1Rpm / 460) * Math.min(1, 0.1 + mg1ElecKw / 38) * 0.018;
     this.mg1Osc.frequency.setTargetAtTime(mg1Freq, now, 0.05);
     this.mg1Gain.gain.setTargetAtTime(mg1Vol, now, 0.06);
 
-    // 3. 2.0L 4-Cylinder Atkinson ICE (Fueled Combustion vs. Fuel-Cut B-Mode Air Pumping)
-    const fireHz = Math.max(20, absIceRpm / 30); // 4-cylinder 4-stroke = 2 firings per rev
+    // 3. M20A-FXS 2.0L Atkinson ICE (dominant combustion roar & pronounced B-mode pumping)
+    const fireHz = Math.max(20, absIceRpm / 30);
     this.iceCombOsc.frequency.setTargetAtTime(fireHz, now, 0.05);
     this.iceSubOsc.frequency.setTargetAtTime(fireHz * 0.5, now, 0.05);
 
     if (state.iceFuelActive && absIceRpm > 400) {
-      const iceLoad = Math.min(1, Math.max(0.15, state.flows.iceToCarrierKw / 75));
-      const cutoff = 135 + absIceRpm * 0.085 + iceLoad * 290;
-      const combVol = (0.085 + iceLoad * 0.13) * Math.min(1, (absIceRpm - 350) / 500);
+      const iceLoad = Math.min(1, Math.max(0.18, state.flows.iceToCarrierKw / 72));
+      const cutoff = 155 + absIceRpm * 0.105 + iceLoad * 340;
+      const combVol = (0.165 + iceLoad * 0.24) * Math.min(1, (absIceRpm - 320) / 460);
 
       this.iceFilter.frequency.setTargetAtTime(cutoff, now, 0.06);
       this.iceCombGain.gain.setTargetAtTime(combVol, now, 0.06);
-      this.pumpGain.gain.setTargetAtTime(0.015 * iceLoad, now, 0.06);
+      this.pumpGain.gain.setTargetAtTime(0.025 * iceLoad, now, 0.06);
     } else if (!state.iceFuelActive && absIceRpm > 260) {
-      // Unfueled ICE spinning (MG1 starter cranking OR B-mode engine braking air pump!)
+      // Unfueled ICE spinning (MG1 starter cranking OR B-mode engine braking air pump)
       const pumpRatio = Math.min(1, absIceRpm / 3200);
-      this.iceCombGain.gain.setTargetAtTime(0.028 * pumpRatio, now, 0.06);
-      this.iceFilter.frequency.setTargetAtTime(110 + absIceRpm * 0.04, now, 0.06);
+      this.iceCombGain.gain.setTargetAtTime(0.048 * pumpRatio, now, 0.06);
+      this.iceFilter.frequency.setTargetAtTime(125 + absIceRpm * 0.048, now, 0.06);
 
-      this.pumpNoiseFilter.frequency.setTargetAtTime(95 + absIceRpm * 0.11, now, 0.06);
-      this.pumpGain.gain.setTargetAtTime(0.12 * pumpRatio, now, 0.06);
+      this.pumpNoiseFilter.frequency.setTargetAtTime(105 + absIceRpm * 0.11, now, 0.06);
+      this.pumpGain.gain.setTargetAtTime(0.21 * pumpRatio, now, 0.06);
     } else {
       this.iceCombGain.gain.setTargetAtTime(0, now, 0.05);
       this.pumpGain.gain.setTargetAtTime(0, now, 0.05);
     }
 
-    // 4. Tire / Road Roll
-    const roadVol = Math.min(0.075, (absSpeed / 125) * 0.075);
-    this.roadFilter.frequency.setTargetAtTime(120 + absSpeed * 2.2, now, 0.08);
+    // 4. Weighty MPV Tire / Road Roll (215/60R17 under 2,020 kg laden weight — prominent road hum)
+    const roadVol =
+      absSpeed > 1.0 ? Math.min(0.28, Math.pow(absSpeed / 95, 0.82) * 0.28) : 0;
+    this.roadFilter.frequency.setTargetAtTime(145 + absSpeed * 2.4, now, 0.08);
     this.roadGain.gain.setTargetAtTime(roadVol, now, 0.08);
   }
 

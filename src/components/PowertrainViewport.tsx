@@ -1,14 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Bell, BellOff, ListOrdered, X } from 'lucide-react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { formatDirectionLabel, getRotationDirection } from '../simulation/ths5Engine';
+import {
+  classifyIceOperatingStatus,
+  formatDirectionLabel,
+  getRotationDirection,
+  PSD_CONSTANTS,
+} from '../drivetrain';
 import { buildPowertrainScene, LabelAnchorRefs } from '../three/buildPowertrainScene';
 import {
-  AutoDriveEventKind,
-  AutoDriveMode,
+  AnimationSpeedMode,
   CameraPresetId,
   COMPONENT_COLORS,
   PowertrainState,
+  PsdLogCategory,
+  PsdLogEntry,
   RotationDir,
   WorkspaceTab,
 } from '../types/hybrid';
@@ -23,57 +30,40 @@ interface PowertrainViewportProps {
   cameraPresetTrigger: number;
   explodeFactor: number;
   visualSpinScale: number;
+  animationSpeedMode: AnimationSpeedMode;
   showStreams: boolean;
+  onOpenLogModal: () => void;
+  logNotifEnabled: boolean;
+  onToggleLogNotif: () => void;
+  activeNotification: PsdLogEntry | null;
+  onDismissNotification: () => void;
 }
 
-function getAutoDriveEventBadgeClass(kind: AutoDriveEventKind): string {
-  switch (kind) {
-    case AutoDriveEventKind.RED_LIGHT_BRAKE:
-    case AutoDriveEventKind.RED_LIGHT_WAIT:
-      return 'bg-red-500/20 border-red-500/50 text-red-300';
-    case AutoDriveEventKind.GREEN_LAUNCH:
-    case AutoDriveEventKind.SUMMIT_CREST:
-      return 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300';
-    case AutoDriveEventKind.TRAFFIC_JAM:
-    case AutoDriveEventKind.HEAVY_TRAFFIC:
-    case AutoDriveEventKind.TRAFFIC_SLOWDOWN:
-    case AutoDriveEventKind.MOUNTAIN_CLIMB:
-      return 'bg-amber-500/20 border-amber-500/50 text-amber-300';
-    case AutoDriveEventKind.OVERTAKE:
-    case AutoDriveEventKind.HIGHWAY_MERGE:
-    case AutoDriveEventKind.MOUNTAIN_DESCENT:
-      return 'bg-violet-500/25 border-violet-400/55 text-violet-200';
-    default:
-      return 'bg-cyan-500/20 border-cyan-500/45 text-cyan-300';
-  }
-}
-
-function getAutoDriveModeLabel(mode: AutoDriveMode): string {
-  if (mode === AutoDriveMode.CITY) return 'CITY AUTO';
-  if (mode === AutoDriveMode.HIGHWAY) return 'HWY AUTO';
-  if (mode === AutoDriveMode.MOUNTAIN) return 'MTN AUTO';
-  return 'AUTO';
-}
+const NOTIF_CAT_BADGE: Record<PsdLogCategory, string> = {
+  HYBRID: 'bg-cyan-500/20 border-cyan-400/50 text-cyan-200',
+  FLOW: 'bg-emerald-500/20 border-emerald-400/50 text-emerald-200',
+  ROTATION: 'bg-amber-500/20 border-amber-400/50 text-amber-200',
+};
 
 const CAMERA_PRESETS: Record<
   CameraPresetId,
   { pos: [number, number, number]; target: [number, number, number] }
 > = {
   [CameraPresetId.OVERVIEW]: {
-    pos: [0.35, 3.85, 13.8],
-    target: [0.25, 0.72, 0.15],
+    pos: [3.45, 4.25, 16.25],
+    target: [1.15, 0.62, 0.15],
   },
   [CameraPresetId.PLANETARY]: {
-    pos: [-2.65, 2.25, 3.45],
-    target: [-1.75, 1.42, -0.45],
+    pos: [-2.45, 2.25, 3.65],
+    target: [-1.55, 1.42, -0.45],
   },
   [CameraPresetId.PARALLEL_SHAFTS]: {
-    pos: [2.75, 2.65, 6.2],
-    target: [2.45, 0.82, 0.32],
+    pos: [3.05, 2.65, 6.4],
+    target: [2.75, 0.82, 0.32],
   },
   [CameraPresetId.WHEEL_DIFF]: {
-    pos: [8.45, 1.15, 5.1],
-    target: [4.85, -0.55, 0.9],
+    pos: [9.65, 1.35, 5.8],
+    target: [5.65, -0.55, 0.9],
   },
 };
 
@@ -98,10 +88,10 @@ const _tagLayout: [
   TagLayoutItem,
   TagLayoutItem,
 ] = [
-  { rawX: 0, rawY: 0, x: 0, y: 0, w: 174, h: 50, visible: false },
+  { rawX: 0, rawY: 0, x: 0, y: 0, w: 186, h: 74, visible: false },
   { rawX: 0, rawY: 0, x: 0, y: 0, w: 184, h: 64, visible: false },
-  { rawX: 0, rawY: 0, x: 0, y: 0, w: 174, h: 50, visible: false },
-  { rawX: 0, rawY: 0, x: 0, y: 0, w: 174, h: 50, visible: false },
+  { rawX: 0, rawY: 0, x: 0, y: 0, w: 174, h: 58, visible: false },
+  { rawX: 0, rawY: 0, x: 0, y: 0, w: 174, h: 58, visible: false },
   { rawX: 0, rawY: 0, x: 0, y: 0, w: 176, h: 68, visible: false },
 ];
 
@@ -114,7 +104,13 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
   cameraPresetTrigger,
   explodeFactor,
   visualSpinScale,
+  animationSpeedMode,
   showStreams,
+  onOpenLogModal,
+  logNotifEnabled,
+  onToggleLogNotif,
+  activeNotification,
+  onDismissNotification,
 }) => {
   const canvasMountRef = useRef<HTMLDivElement | null>(null);
   const topBarRef = useRef<HTMLDivElement | null>(null);
@@ -127,11 +123,13 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
   const viewParamsRef = useRef({
     explodeFactor,
     visualSpinScale,
+    animationSpeedMode,
     showStreams,
   });
   viewParamsRef.current = {
     explodeFactor,
     visualSpinScale,
+    animationSpeedMode,
     showStreams,
   };
 
@@ -156,6 +154,8 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
   const iceTagRef = useRef<HTMLDivElement | null>(null);
   const iceValRef = useRef<HTMLSpanElement | null>(null);
   const iceDirRef = useRef<HTMLSpanElement | null>(null);
+  const iceStatusRef = useRef<HTMLSpanElement | null>(null);
+  const iceBarRef = useRef<HTMLDivElement | null>(null);
   const iceLineRef = useRef<SVGLineElement | null>(null);
 
   const battTagRef = useRef<HTMLDivElement | null>(null);
@@ -167,11 +167,13 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
   const mg1TagRef = useRef<HTMLDivElement | null>(null);
   const mg1ValRef = useRef<HTMLSpanElement | null>(null);
   const mg1DirRef = useRef<HTMLSpanElement | null>(null);
+  const mg1BarRef = useRef<HTMLDivElement | null>(null);
   const mg1LineRef = useRef<SVGLineElement | null>(null);
 
   const mg2TagRef = useRef<HTMLDivElement | null>(null);
   const mg2ValRef = useRef<HTMLSpanElement | null>(null);
   const mg2DirRef = useRef<HTMLSpanElement | null>(null);
+  const mg2BarRef = useRef<HTMLDivElement | null>(null);
   const mg2LineRef = useRef<SVGLineElement | null>(null);
 
   const wheelTagRef = useRef<HTMLDivElement | null>(null);
@@ -268,7 +270,8 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
       slot: TagLayoutItem,
       w: number,
       h: number,
-      offsetY = -24
+      offsetY = -24,
+      offsetX = 0
     ) {
       anchor.getWorldPosition(_projVec);
       _projVec.project(camera);
@@ -279,7 +282,7 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
       slot.visible = true;
       slot.rawX = (_projVec.x * 0.5 + 0.5) * w;
       slot.rawY = (-_projVec.y * 0.5 + 0.5) * h;
-      slot.x = slot.rawX;
+      slot.x = slot.rawX + offsetX;
       slot.y = slot.rawY + offsetY;
     }
 
@@ -373,8 +376,8 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
 
             const dx = b.x - a.x;
             const dy = b.y - a.y;
-            const minSepX = (a.w + b.w) * 0.5 + 8;
-            const minSepY = (a.h + b.h) * 0.5 + 8;
+            const minSepX = (a.w + b.w) * 0.5 + 12;
+            const minSepY = (a.h + b.h) * 0.5 + 10;
             const overlapX = minSepX - Math.abs(dx);
             const overlapY = minSepY - Math.abs(dy);
 
@@ -453,11 +456,11 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
       const w = container?.clientWidth || window.innerWidth;
       const h = container?.clientHeight || window.innerHeight;
 
-      projectAnchor(anchors.ice, _tagLayout[0], w, h, -24);
-      projectAnchor(anchors.battery, _tagLayout[1], w, h, -26);
-      projectAnchor(anchors.mg1, _tagLayout[2], w, h, -24);
-      projectAnchor(anchors.mg2, _tagLayout[3], w, h, -24);
-      projectAnchor(anchors.wheel, _tagLayout[4], w, h, -28);
+      projectAnchor(anchors.ice, _tagLayout[0], w, h, 54, 0);
+      projectAnchor(anchors.battery, _tagLayout[1], w, h, -28, 0);
+      projectAnchor(anchors.mg1, _tagLayout[2], w, h, -48, 36);
+      projectAnchor(anchors.mg2, _tagLayout[3], w, h, 86, 0);
+      projectAnchor(anchors.wheel, _tagLayout[4], w, h, -26, 0);
 
       resolveTagCollisions(w, h);
 
@@ -467,12 +470,40 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
       applyTagTransform(_tagLayout[3], mg2TagRef.current, mg2LineRef.current);
       applyTagTransform(_tagLayout[4], wheelTagRef.current, wheelLineRef.current);
 
-      // 1. ICE
+      // 1. ICE (Distinguishes active combustion power vs unfueled vacuum/air-pump spin)
+      const iceStatus = classifyIceOperatingStatus(
+        st.iceRpm,
+        st.iceFuelActive,
+        st.flows.iceToCarrierKw
+      );
       if (iceValRef.current) {
         iceValRef.current.textContent = `${Math.round(st.iceRpm).toLocaleString()} RPM`;
       }
       if (iceDirRef.current) {
         iceDirRef.current.textContent = formatArrowBadge(st.iceRpm);
+      }
+      if (iceStatusRef.current) {
+        iceStatusRef.current.textContent = iceStatus.badgeText;
+        iceStatusRef.current.className =
+          iceStatus.badgeTone === 'power'
+            ? 'text-orange-300 font-semibold'
+            : iceStatus.badgeTone === 'idle'
+              ? 'text-amber-200 font-semibold'
+              : iceStatus.badgeTone === 'unfueled'
+                ? 'text-sky-300 font-semibold'
+                : 'text-slate-400';
+      }
+      if (iceBarRef.current) {
+        const icePct = Math.min(100, (Math.abs(st.iceRpm) / PSD_CONSTANTS.ICE_MAX_RPM) * 100);
+        iceBarRef.current.style.width = `${icePct.toFixed(1)}%`;
+        iceBarRef.current.className =
+          iceStatus.badgeTone === 'power'
+            ? 'h-full bg-orange-400 rounded-full'
+            : iceStatus.badgeTone === 'idle'
+              ? 'h-full bg-amber-300 rounded-full'
+              : iceStatus.badgeTone === 'unfueled'
+                ? 'h-full bg-sky-400/80 rounded-full'
+                : 'h-full bg-red-400 rounded-full';
       }
 
       // 2. HV Battery · PCU
@@ -497,20 +528,28 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
         }
       }
 
-      // 3. MG1
+      // 3. MG1 (Direction-agnostic RPM bar vs THS-5 MG1 10,500 RPM ceiling)
       if (mg1ValRef.current) {
         mg1ValRef.current.textContent = `${Math.round(st.mg1Rpm).toLocaleString()} RPM`;
       }
       if (mg1DirRef.current) {
         mg1DirRef.current.textContent = formatArrowBadge(st.mg1Rpm);
       }
+      if (mg1BarRef.current) {
+        const mg1Pct = Math.min(100, (Math.abs(st.mg1Rpm) / PSD_CONSTANTS.MG1_MAX_RPM) * 100);
+        mg1BarRef.current.style.width = `${mg1Pct.toFixed(1)}%`;
+      }
 
-      // 4. MG2
+      // 4. MG2 (Direction-agnostic RPM bar vs 1VM MG2 17,000 RPM ceiling)
       if (mg2ValRef.current) {
         mg2ValRef.current.textContent = `${Math.round(st.mg2Rpm).toLocaleString()} RPM`;
       }
       if (mg2DirRef.current) {
         mg2DirRef.current.textContent = formatArrowBadge(st.mg2Rpm);
+      }
+      if (mg2BarRef.current) {
+        const mg2Pct = Math.min(100, (Math.abs(st.mg2Rpm) / PSD_CONSTANTS.MG2_MAX_RPM) * 100);
+        mg2BarRef.current.style.width = `${mg2Pct.toFixed(1)}%`;
       }
 
       // 5. Wheel (Uncramped 2-row layout: km/h below RPM, FWD/REV below CW/CCW)
@@ -591,6 +630,7 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
         stateRef.current,
         dt,
         vp.visualSpinScale,
+        vp.animationSpeedMode,
         vp.explodeFactor,
         vp.showStreams
       );
@@ -630,57 +670,129 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
     <div className="relative w-full h-full overflow-hidden select-none bg-[#090d16]">
       <div ref={canvasMountRef} className="w-full h-full" />
 
-      {/* Top-Left HUD Stack: Title + 5-Component Legend + Drive & Hybrid Status */}
+      {/* Top-Left HUD Stack: Title + 5-Component Legend + PSD Log & Notif + Notification Toast */}
       <div
         ref={topBarRef}
         className="pointer-events-none absolute top-2.5 left-3.5 z-10 flex flex-col items-start gap-1.5 w-fit max-w-[calc(100vw-246px)]"
       >
-        {/* Row 1: Title ("Toyota eCVT PSD") + Complete 5-Component Color Key */}
-        <div className="inline-flex w-fit max-w-full flex-wrap items-center gap-x-2.5 gap-y-1 px-2.5 py-1 rounded-lg bg-slate-950/72 border border-slate-800/80 text-[11px] text-slate-300">
-          <span className="font-display font-bold text-xs text-slate-100 whitespace-nowrap">
-            Toyota eCVT PSD
-          </span>
-          <span className="text-slate-600 hidden sm:inline">·</span>
-          <span className="inline-flex items-center gap-1 whitespace-nowrap">
-            <span
-              className="w-2 h-2 rounded-xs"
-              style={{ backgroundColor: COMPONENT_COLORS.ice.hex }}
-            />
-            <span>ICE + Carrier &amp; Planets</span>
-          </span>
-          <span className="text-slate-600">·</span>
-          <span className="inline-flex items-center gap-1 whitespace-nowrap">
-            <span
-              className="w-2 h-2 rounded-xs"
-              style={{ backgroundColor: COMPONENT_COLORS.mg1.hex }}
-            />
-            <span>MG1 + Sun</span>
-          </span>
-          <span className="text-slate-600">·</span>
-          <span className="inline-flex items-center gap-1 whitespace-nowrap">
-            <span
-              className="w-2 h-2 rounded-xs"
-              style={{ backgroundColor: COMPONENT_COLORS.mg2.hex }}
-            />
-            <span>MG2 + Ring &amp; Gears</span>
-          </span>
-          <span className="text-slate-600">·</span>
-          <span className="inline-flex items-center gap-1 whitespace-nowrap">
-            <span
-              className="w-2 h-2 rounded-xs"
-              style={{ backgroundColor: COMPONENT_COLORS.wheel.hex }}
-            />
-            <span>Wheel + Tire</span>
-          </span>
-          <span className="text-slate-600">·</span>
-          <span className="inline-flex items-center gap-1 whitespace-nowrap">
-            <span
-              className="w-2 h-2 rounded-xs"
-              style={{ backgroundColor: COMPONENT_COLORS.battery.hex }}
-            />
-            <span>HV Batt + PCU</span>
-          </span>
+        {/* Row 1: Title + Color Key + PSD Log Modal Trigger + Notification Toggle */}
+        <div className="flex flex-wrap items-center gap-1.5 max-w-full">
+          <div className="inline-flex w-fit max-w-full flex-wrap items-center gap-x-2.5 gap-y-1 px-2.5 py-1 rounded-lg bg-slate-950/72 border border-slate-800/80 text-[11px] text-slate-300">
+            <span className="font-display font-bold text-xs text-slate-100 whitespace-nowrap">
+              Toyota eCVT PSD
+            </span>
+            <span className="text-slate-600 hidden sm:inline">·</span>
+            <span className="inline-flex items-center gap-1 whitespace-nowrap">
+              <span
+                className="w-2 h-2 rounded-xs"
+                style={{ backgroundColor: COMPONENT_COLORS.ice.hex }}
+              />
+              <span>ICE + Carrier &amp; Planets</span>
+            </span>
+            <span className="text-slate-600">·</span>
+            <span className="inline-flex items-center gap-1 whitespace-nowrap">
+              <span
+                className="w-2 h-2 rounded-xs"
+                style={{ backgroundColor: COMPONENT_COLORS.mg1.hex }}
+              />
+              <span>MG1 + Sun</span>
+            </span>
+            <span className="text-slate-600">·</span>
+            <span className="inline-flex items-center gap-1 whitespace-nowrap">
+              <span
+                className="w-2 h-2 rounded-xs"
+                style={{ backgroundColor: COMPONENT_COLORS.mg2.hex }}
+              />
+              <span>MG2 + Ring &amp; Gears</span>
+            </span>
+            <span className="text-slate-600">·</span>
+            <span className="inline-flex items-center gap-1 whitespace-nowrap">
+              <span
+                className="w-2 h-2 rounded-xs"
+                style={{ backgroundColor: COMPONENT_COLORS.wheel.hex }}
+              />
+              <span>Wheel + Tire</span>
+            </span>
+            <span className="text-slate-600">·</span>
+            <span className="inline-flex items-center gap-1 whitespace-nowrap">
+              <span
+                className="w-2 h-2 rounded-xs"
+                style={{ backgroundColor: COMPONENT_COLORS.battery.hex }}
+              />
+              <span>HV Batt + PCU</span>
+            </span>
+          </div>
+
+          <div className="pointer-events-auto inline-flex items-center gap-1">
+            <button
+              type="button"
+              onClick={onOpenLogModal}
+              title="Open PSD Event & Explanation Log"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-950/82 border border-slate-700/75 text-[11px] font-medium text-slate-200 hover:text-white hover:border-slate-500 transition-colors whitespace-nowrap"
+            >
+              <ListOrdered className="w-3.5 h-3.5 text-cyan-400" />
+              <span>PSD Log</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={onToggleLogNotif}
+              aria-pressed={logNotifEnabled}
+              title={
+                logNotifEnabled
+                  ? 'Live PSD Transition Notifications ON (click to turn OFF)'
+                  : 'Live PSD Transition Notifications OFF (click to turn ON)'
+              }
+              className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] font-medium transition-colors whitespace-nowrap ${
+                logNotifEnabled
+                  ? 'bg-cyan-500/20 border-cyan-400/60 text-cyan-200 hover:bg-cyan-500/30'
+                  : 'bg-slate-950/75 border-slate-700/65 text-slate-400 hover:text-white'
+              }`}
+            >
+              {logNotifEnabled ? (
+                <Bell className="w-3.5 h-3.5 text-cyan-300" />
+              ) : (
+                <BellOff className="w-3.5 h-3.5" />
+              )}
+              <span>{logNotifEnabled ? 'Notif On' : 'Notif Off'}</span>
+            </button>
+          </div>
         </div>
+
+        {/* Row 2: Live Transition Notification Banner under Top Legend */}
+        {logNotifEnabled && activeNotification && (
+          <div className="pointer-events-auto max-w-[600px] px-2.5 py-1.5 rounded-lg bg-slate-950/90 border border-cyan-500/50 shadow-lg text-[11px] space-y-0.5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-1">
+                {activeNotification.categories.map((cat) => (
+                  <span
+                    key={cat}
+                    className={`px-1 py-0.2 rounded border font-mono text-[9.5px] font-bold ${NOTIF_CAT_BADGE[cat]}`}
+                  >
+                    {cat}
+                  </span>
+                ))}
+                <strong className="text-slate-100 font-semibold">
+                  {activeNotification.title}
+                </strong>
+                <span className="font-mono text-[10px] text-violet-300">
+                  · {Math.abs(activeNotification.speedKmh)} km/h
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={onDismissNotification}
+                aria-label="Dismiss notification"
+                className="p-0.5 text-slate-400 hover:text-white shrink-0"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+            <p className="text-slate-300 text-[10.5px] leading-snug">
+              {activeNotification.explanation}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Top-Right 2D Planetary Gear Insert (Measured via ref so badges NEVER touch it) */}
@@ -729,7 +841,7 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
         {/* 1. ICE · Carrier & Planets */}
         <div
           ref={iceTagRef}
-          className="absolute top-0 left-0 w-[172px] px-2.5 py-1 rounded-lg bg-slate-950/74 border border-red-500/45 shadow-md"
+          className="absolute top-0 left-0 w-[184px] px-2.5 py-1 rounded-lg bg-slate-950/74 border border-red-500/45 shadow-md"
         >
           <div className="flex items-center gap-1.5 text-[11px] font-semibold text-red-400 whitespace-nowrap">
             <span className="inline-block w-2 h-2 rounded-xs bg-red-500" />
@@ -740,6 +852,18 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
             <span ref={iceDirRef} className="text-red-300">
               ■ STOP
             </span>
+          </div>
+          <div className="flex items-center justify-between mt-0.5 text-[10.5px] font-mono whitespace-nowrap">
+            <span ref={iceStatusRef} className="text-slate-400">
+              ■ OFF · STANDBY
+            </span>
+          </div>
+          <div className="mt-1 h-1 w-full rounded-full bg-slate-800 overflow-hidden">
+            <div
+              ref={iceBarRef}
+              className="h-full bg-red-400 rounded-full"
+              style={{ width: '0%' }}
+            />
           </div>
         </div>
 
@@ -786,6 +910,13 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
               ■ STOP
             </span>
           </div>
+          <div className="mt-1 h-1 w-full rounded-full bg-slate-800 overflow-hidden">
+            <div
+              ref={mg1BarRef}
+              className="h-full bg-amber-400 rounded-full"
+              style={{ width: '0%' }}
+            />
+          </div>
         </div>
 
         {/* 4. MG2 · Ring & Counter */}
@@ -802,6 +933,13 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
             <span ref={mg2DirRef} className="text-cyan-300">
               ■ STOP
             </span>
+          </div>
+          <div className="mt-1 h-1 w-full rounded-full bg-slate-800 overflow-hidden">
+            <div
+              ref={mg2BarRef}
+              className="h-full bg-cyan-400 rounded-full"
+              style={{ width: '0%' }}
+            />
           </div>
         </div>
 

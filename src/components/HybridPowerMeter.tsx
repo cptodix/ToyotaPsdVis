@@ -1,5 +1,5 @@
 import React from 'react';
-import { GearPosition, HsiZone, PowertrainState } from '../types/hybrid';
+import { PowertrainState } from '../types/hybrid';
 
 interface HybridPowerMeterProps {
   state: PowertrainState;
@@ -39,27 +39,12 @@ export const HybridPowerMeter: React.FC<HybridPowerMeterProps> = ({ state, class
   }
 
   const cx = 86;
-  const cy = 78;
-  const r = 60;
+  const cy = 67;
+  const r = 51;
   const needleTip = polarToCartesian(cx, cy, r - 4, needleDeg);
-  const needleBase = polarToCartesian(cx, cy, 34, needleDeg);
+  const needleBase = polarToCartesian(cx, cy, 31, needleDeg);
 
   const absKmh = Math.abs(Math.round(state.speedKmh));
-
-  const zoneLabel =
-    state.gear === GearPosition.P
-      ? state.flows.batteryToPcuKw < -0.5
-        ? 'P·CHG'
-        : 'PARK'
-      : state.gear === GearPosition.N
-        ? 'NEUT'
-        : state.hsiZone === HsiZone.CHG
-          ? 'CHG'
-          : state.hsiZone === HsiZone.PWR
-            ? 'PWR'
-            : state.evIndicatorOn
-              ? 'EV ECO'
-              : 'HV ECO';
 
   const odoNum = state.odometerKm < 100 ? state.odometerKm.toFixed(2) : state.odometerKm.toFixed(1);
   const avgNum =
@@ -75,12 +60,12 @@ export const HybridPowerMeter: React.FC<HybridPowerMeterProps> = ({ state, class
     <div
       className={`grid grid-cols-[1.04fr_0.96fr] min-[760px]:grid-cols-[1.14fr_0.86fr] min-[960px]:grid-cols-[1.20fr_0.80fr] items-stretch gap-1 min-[760px]:gap-1.5 px-1.5 min-[960px]:px-2 py-1 rounded-lg bg-slate-900/45 border border-slate-700/45 w-full min-w-0 overflow-hidden ${className}`}
     >
-      {/* Sub-Col-A: Power Meter Dial + Speedometer + Zone / kW */}
-      <div className="min-w-0 flex flex-col items-center justify-between">
+      {/* Sub-Col-A: Full-Height Power Meter Dial + Speedometer */}
+      <div className="min-w-0 h-full flex items-center justify-center">
         <svg
-          viewBox="2 1 168 83"
+          viewBox="6 1 160 95"
           preserveAspectRatio="xMidYMid meet"
-          className="w-full max-w-[116px] h-[36px] min-[720px]:h-[44px] min-[960px]:h-[50px] block shrink-0 overflow-hidden"
+          className="w-full h-full max-h-[68px] block overflow-hidden"
           aria-label="Hybrid Power Meter and Speedometer"
         >
           <path
@@ -118,13 +103,13 @@ export const HybridPowerMeter: React.FC<HybridPowerMeterProps> = ({ state, class
             strokeWidth="10"
           />
 
-          <text x="8" y="78" className="fill-cyan-400 text-[10.5px] font-semibold">
+          <text x="10" y="91" className="fill-cyan-400 text-[10.5px] font-semibold">
             CHG
           </text>
-          <text x="52" y="13" className="fill-emerald-400 text-[10.5px] font-semibold">
+          <text x="53" y="10" className="fill-emerald-400 text-[10.5px] font-semibold">
             ECO
           </text>
-          <text x="137" y="78" className="fill-red-400 text-[10.5px] font-semibold">
+          <text x="139" y="91" className="fill-red-400 text-[10.5px] font-semibold">
             PWR
           </text>
 
@@ -140,36 +125,21 @@ export const HybridPowerMeter: React.FC<HybridPowerMeterProps> = ({ state, class
 
           <text
             x={cx}
-            y={cy - 9}
+            y={cy + 3}
             textAnchor="middle"
-            className="fill-slate-50 font-mono text-[27px] font-bold"
+            className="fill-slate-50 font-mono text-[28px] font-bold"
           >
             {state.speedKmh < -0.5 ? `-${absKmh}` : absKmh}
           </text>
           <text
             x={cx}
-            y={cy + 5}
+            y={cy + 17}
             textAnchor="middle"
-            className="fill-slate-400 text-[10.5px] font-medium"
+            className="fill-slate-400 text-[11px] font-medium"
           >
             km/h
           </text>
         </svg>
-
-        <div className="w-full flex items-center justify-center gap-1 text-[8px] min-[760px]:text-[9px] min-[960px]:text-[10px] font-mono tabular-nums leading-none mt-0.5 whitespace-nowrap">
-          <span
-            className={`font-semibold ${
-              state.evIndicatorOn ? 'text-emerald-400' : 'text-amber-400'
-            }`}
-          >
-            {zoneLabel}
-          </span>
-          <span className="text-slate-600">·</span>
-          <span className="text-slate-200">
-            {state.flows.counterToWheelKw >= 0 ? '+' : ''}
-            {Math.round(state.flows.counterToWheelKw)}kW
-          </span>
-        </div>
       </div>
 
       {/* Sub-Col-B: ODO, AVG, FUEL Stacked Vertically & Evenly Distributed */}

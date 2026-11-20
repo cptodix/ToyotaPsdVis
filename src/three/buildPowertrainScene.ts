@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
-import { PSD_CONSTANTS } from '../simulation/ths5Engine';
-import { COMPONENT_COLORS, PowertrainState, RotationDir } from '../types/hybrid';
+import { classifyIceOperatingStatus, PSD_CONSTANTS } from '../drivetrain';
+import { AnimationSpeedMode, COMPONENT_COLORS, PowertrainState, RotationDir } from '../types/hybrid';
 import {
   computeExternalMeshAngle,
   createExternalGearGeometry,
@@ -39,9 +39,18 @@ export interface PowerStreamPath {
 
 export interface PistonAssembly {
   pistonHead: THREE.Group;
-  conRod: THREE.Mesh;
+  conRod: THREE.Group;
   crankAngleOffset: number;
+  firingThetaOffset: number;
   xPos: number;
+  sparkCore: THREE.Mesh;
+  sparkMat: THREE.MeshBasicMaterial;
+  flameInner: THREE.Mesh;
+  flameInnerMat: THREE.MeshBasicMaterial;
+  flameOuter: THREE.Mesh;
+  flameOuterMat: THREE.MeshBasicMaterial;
+  sparkEnv: number;
+  flameEnv: number;
 }
 
 export interface LabelAnchorRefs {
@@ -59,6 +68,7 @@ export interface PowertrainSceneContext {
     state: PowertrainState,
     dt: number,
     visualSpinScale: number,
+    animationSpeedMode: AnimationSpeedMode,
     explodeFactor: number,
     showStreams: boolean
   ) => void;
@@ -71,6 +81,14 @@ const _curvePt = new THREE.Vector3();
 const _curveTan = new THREE.Vector3();
 const _upVec = new THREE.Vector3(0, 1, 0);
 const _quat = new THREE.Quaternion();
+const _sparkBlueColor = new THREE.Color(0x93c5fd);
+const _sparkWhiteColor = new THREE.Color(0xf8fafc);
+const _flameHotColor = new THREE.Color(0xfef08a);
+const _flameWarmColor = new THREE.Color(0xf97316);
+const _flameDeepColor = new THREE.Color(0xdc2626);
+const _brakeCoolGlow = new THREE.Color(0xdc2626);
+const _brakeHotGlow = new THREE.Color(0xff8c1a);
+const FOUR_PI = Math.PI * 4;
 
 export function buildPowertrainScene(
   renderer: THREE.WebGLRenderer,
@@ -185,19 +203,19 @@ export function buildPowertrainScene(
 
   const plinthGroup = new THREE.Group();
   const plinthBase = new THREE.Mesh(
-    new THREE.BoxGeometry(15.2, 0.16, 5.4),
+    new THREE.BoxGeometry(17.6, 0.16, 5.4),
     new THREE.MeshStandardMaterial({
       color: 0x111827,
       roughness: 0.56,
       metalness: 0.44,
     })
   );
-  plinthBase.position.set(0.45, groundY - 0.09, 0.4);
+  plinthBase.position.set(1.05, groundY - 0.09, 0.4);
   plinthBase.receiveShadow = true;
   plinthGroup.add(plinthBase);
 
   const shadowPlane = new THREE.Mesh(
-    new THREE.PlaneGeometry(14.4, 4.8),
+    new THREE.PlaneGeometry(16.8, 4.8),
     new THREE.MeshBasicMaterial({
       map: contactShadowTex,
       transparent: true,
@@ -206,10 +224,11 @@ export function buildPowertrainScene(
     })
   );
   shadowPlane.rotation.x = -Math.PI / 2;
-  shadowPlane.position.set(0.45, groundY + 0.005, 0.4);
+  shadowPlane.position.set(1.05, groundY + 0.005, 0.4);
   plinthGroup.add(shadowPlane);
 
-  // Dynamometer Roller directly under the Wheel at x = +6.35
+  // Dynamometer Roller directly under the Wheel at x = +7.90
+  const xWheelWorld = 7.9;
   const dynoRadius = 0.36;
   const dynoRollerGeo = new THREE.CylinderGeometry(dynoRadius, dynoRadius, 0.72, 40);
   dynoRollerGeo.rotateZ(Math.PI / 2);
@@ -221,7 +240,7 @@ export function buildPowertrainScene(
       metalness: 0.35,
     })
   );
-  dynoRollerMesh.position.set(6.35, groundY - dynoRadius + 0.01, z4);
+  dynoRollerMesh.position.set(xWheelWorld, groundY - dynoRadius + 0.01, z4);
   dynoRollerMesh.receiveShadow = true;
   scene.add(dynoRollerMesh);
 
@@ -229,7 +248,7 @@ export function buildPowertrainScene(
     new THREE.BoxGeometry(0.95, 0.14, 0.95),
     new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.42, metalness: 0.7 })
   );
-  dynoCradle.position.set(6.35, groundY - 0.06, z4);
+  dynoCradle.position.set(xWheelWorld, groundY - 0.06, z4);
   plinthGroup.add(dynoCradle);
   scene.add(plinthGroup);
 
@@ -327,150 +346,209 @@ export function buildPowertrainScene(
   const explodables: Array<{ obj: THREE.Object3D; baseX: number; explodeDeltaX: number }> = [];
 
   // ============================================================================
-  // 1. INTERNAL COMBUSTION ENGINE (ICE — Far Left at x = -5.45, Axis 1)
+  // 1. INTERNAL COMBUSTION ENGINE (ICE — Segmented Real I4 Crankshaft at x = -4.95)
   // ============================================================================
-  const xIce = -5.45;
+  const xIce = -4.95;
   const iceAssembly = new THREE.Group();
   iceAssembly.position.set(xIce, y1, z1);
   scene.add(iceAssembly);
-  explodables.push({ obj: iceAssembly, baseX: xIce, explodeDeltaX: -1.2 });
+  explodables.push({ obj: iceAssembly, baseX: xIce, explodeDeltaX: -1.15 });
 
-  const engineBackWall = new THREE.Mesh(
-    new THREE.BoxGeometry(1.75, 1.18, 0.34),
-    matCastAluminum
-  );
-  engineBackWall.position.set(-0.22, 0.42, -0.34);
-  engineBackWall.castShadow = true;
-  iceAssembly.add(engineBackWall);
-
-  const camCover = new THREE.Mesh(
-    new THREE.BoxGeometry(1.78, 0.22, 0.72),
-    matIceCrimson
-  );
-  camCover.position.set(-0.22, 1.12, -0.08);
-  camCover.castShadow = true;
-  iceAssembly.add(camCover);
-
-  const oilPan = new THREE.Mesh(
-    new THREE.BoxGeometry(1.76, 0.26, 0.76),
-    matDarkIron
-  );
-  oilPan.position.set(-0.22, -0.46, -0.04);
-  oilPan.castShadow = true;
-  iceAssembly.add(oilPan);
-
-  const cylSleeveGeo = new THREE.CylinderGeometry(
-    0.165,
-    0.165,
-    0.68,
-    24,
-    1,
-    true,
-    Math.PI * 0.5,
-    Math.PI
-  );
-  const cylPositionsX = [-0.84, -0.43, -0.02, 0.39];
-  for (const cx of cylPositionsX) {
-    const sleeve = new THREE.Mesh(cylSleeveGeo, matHardenedSteel);
-    sleeve.position.set(cx, 0.58, 0);
-    iceAssembly.add(sleeve);
-  }
-
-  const iceLegHeight = Math.abs(groundY - (y1 - 0.58));
-  const iceMountLeg = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.085, 0.13, iceLegHeight, 16),
-    matDarkIron
-  );
-  iceMountLeg.position.set(-0.22, -0.58 - iceLegHeight * 0.5, -0.04);
-  iceAssembly.add(iceMountLeg);
+  // 4-cylinder inline geometry — pistons, articulated connecting rods & counterweighted crankshaft
+  const cylPositionsX = [-0.9, -0.34, 0.22, 0.78];
 
   const crankGroup = new THREE.Group();
   iceAssembly.add(crankGroup);
 
-  const mainJournal = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.075, 0.075, 2.15, 20),
-    matIceCrimson
-  );
-  mainJournal.rotation.z = Math.PI / 2;
-  mainJournal.position.set(-0.08, 0, 0);
-  crankGroup.add(mainJournal);
+  // 5 Segmented Main Bearing Journals strictly BETWEEN throws (zero shaft inside conrod swing bays!)
+  const mainJournalSpans: Array<[number, number]> = [
+    [-1.28, -1.04],
+    [-0.76, -0.48],
+    [-0.2, 0.08],
+    [0.36, 0.64],
+    [0.92, 1.32],
+  ];
+  for (const [xStart, xEnd] of mainJournalSpans) {
+    const len = xEnd - xStart;
+    const mjMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.072, 0.072, len, 20),
+      matIceCrimson
+    );
+    mjMesh.rotation.z = Math.PI / 2;
+    mjMesh.position.set((xStart + xEnd) * 0.5, 0, 0);
+    mjMesh.castShadow = true;
+    crankGroup.add(mjMesh);
+  }
 
-  const flywheelMesh = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.45, 0.45, 0.09, 36),
-    matDarkIron
-  );
-  flywheelMesh.rotation.z = Math.PI / 2;
-  flywheelMesh.position.set(0.92, 0, 0);
-  flywheelMesh.castShadow = true;
-  crankGroup.add(flywheelMesh);
+  // Sculpted Crankshaft Web + Half-Moon Counterweight Geometry (extruded along X)
+  const crankThrow = 0.17;
+  const rodLen = 0.56;
+  const webShape = new THREE.Shape();
+  webShape.absarc(0, crankThrow, 0.085, 0, Math.PI, false);
+  webShape.lineTo(-0.105, -0.02);
+  webShape.lineTo(-0.215, -0.105);
+  webShape.absarc(0, 0, 0.24, Math.PI + 0.45, -0.45, false);
+  webShape.lineTo(0.105, -0.02);
+  webShape.closePath();
 
-  const damperHub = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.3, 0.3, 0.12, 28),
-    matIceCrimson
-  );
-  damperHub.rotation.z = Math.PI / 2;
-  damperHub.position.set(0.95, 0, 0);
-  crankGroup.add(damperHub);
+  const crankWebGeo = new THREE.ExtrudeGeometry(webShape, {
+    depth: 0.042,
+    bevelEnabled: true,
+    bevelSize: 0.006,
+    bevelThickness: 0.006,
+    curveSegments: 16,
+  });
+  crankWebGeo.translate(0, 0, -0.021);
+  crankWebGeo.rotateY(Math.PI / 2);
 
-  const crankThrow = 0.16;
-  const rodLen = 0.52;
-  const pistonGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.18, 24);
-  const crownRingGeo = new THREE.TorusGeometry(0.151, 0.008, 8, 24);
+  const pistonGeo = new THREE.CylinderGeometry(0.145, 0.145, 0.17, 24);
+  const crownRingGeo = new THREE.TorusGeometry(0.146, 0.008, 8, 24);
   crownRingGeo.rotateX(Math.PI / 2);
-  const rodGeo = new THREE.BoxGeometry(0.045, rodLen, 0.065);
+  const wristPinGeo = new THREE.CylinderGeometry(0.028, 0.028, 0.21, 14);
+  wristPinGeo.rotateZ(Math.PI / 2);
+
+  const bigEndGeo = new THREE.CylinderGeometry(0.082, 0.082, 0.076, 20);
+  bigEndGeo.rotateZ(Math.PI / 2);
+  const capBoltGeo = new THREE.BoxGeometry(0.068, 0.032, 0.185);
+  const rodShankGeo = new THREE.BoxGeometry(0.042, rodLen - 0.075, 0.056);
+  const smallEndGeo = new THREE.CylinderGeometry(0.042, 0.042, 0.072, 16);
+  smallEndGeo.rotateZ(Math.PI / 2);
+
+  const sparkTipGeo = new THREE.CylinderGeometry(0.012, 0.008, 0.038, 10);
+  const sparkCoreGeo = new THREE.SphereGeometry(0.052, 14, 12);
+  // Full-bore cylindrical combustion volume matching piston radius (0.145) + wide radiant halo
+  const flameInnerGeo = new THREE.CylinderGeometry(0.144, 0.146, 0.068, 24);
+  const flameOuterGeo = new THREE.SphereGeometry(0.168, 20, 14);
+
+  // Real inline-4 crank throws (180 deg symmetry) + 1-3-4-2 4-stroke (720 deg / 4π) firing order
   const crankOffsets = [0, Math.PI, Math.PI, 0];
+  const firingThetaOffsets = [0, Math.PI * 3, Math.PI, Math.PI * 2];
   const pistons: PistonAssembly[] = [];
 
   for (let i = 0; i < 4; i++) {
     const cx = cylPositionsX[i];
     const phase = crankOffsets[i];
-    const pinY = crankThrow * Math.cos(phase);
-    const pinZ = crankThrow * Math.sin(phase);
+    const firingPhase = firingThetaOffsets[i];
+
+    // Rotate each throw cleanly around main journal X axis
+    const throwGroup = new THREE.Group();
+    throwGroup.position.set(cx, 0, 0);
+    throwGroup.rotation.x = phase;
+    crankGroup.add(throwGroup);
 
     const crankPin = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.05, 0.05, 0.16, 14),
+      new THREE.CylinderGeometry(0.052, 0.052, 0.26, 18),
       matHardenedSteel
     );
     crankPin.rotation.z = Math.PI / 2;
-    crankPin.position.set(cx, pinY, pinZ);
-    crankGroup.add(crankPin);
+    crankPin.position.set(0, crankThrow, 0);
+    throwGroup.add(crankPin);
 
-    for (const side of [-0.1, 0.1]) {
-      const web = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.28, 0.14), matCarrierCrimson);
-      web.position.set(cx + side, pinY * 0.35, pinZ * 0.35);
-      web.rotation.x = phase;
-      crankGroup.add(web);
+    for (const sideX of [-0.14, 0.14]) {
+      const web = new THREE.Mesh(crankWebGeo, matCarrierCrimson);
+      web.position.set(sideX, 0, 0);
+      web.castShadow = true;
+      throwGroup.add(web);
     }
 
     const pistonHead = new THREE.Group();
     const pBody = new THREE.Mesh(pistonGeo, matHardenedSteel);
+    pBody.position.y = 0.035;
     pBody.castShadow = true;
     pistonHead.add(pBody);
     const pRing = new THREE.Mesh(crownRingGeo, matIceCrimson);
-    pRing.position.y = 0.055;
+    pRing.position.y = 0.095;
     pistonHead.add(pRing);
-    pistonHead.position.set(cx, 0.58, 0);
+    const wPin = new THREE.Mesh(wristPinGeo, matDarkIron);
+    pistonHead.add(wPin);
+    pistonHead.position.set(cx, 0.62, 0);
     iceAssembly.add(pistonHead);
 
-    const conRod = new THREE.Mesh(rodGeo, matCarrierCrimson);
+    // Subtle iridium spark electrode tip + ignition spark flash & combustion flame dome above TDC
+    const sparkTip = new THREE.Mesh(sparkTipGeo, matHardenedSteel);
+    sparkTip.position.set(cx, 0.922, 0);
+    iceAssembly.add(sparkTip);
+
+    const sparkMat = new THREE.MeshBasicMaterial({
+      color: 0xe0f2fe,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const sparkCore = new THREE.Mesh(sparkCoreGeo, sparkMat);
+    sparkCore.position.set(cx, 0.892, 0);
+    sparkCore.visible = false;
+    iceAssembly.add(sparkCore);
+
+    const flameInnerMat = new THREE.MeshBasicMaterial({
+      color: 0xfef08a,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const flameInner = new THREE.Mesh(flameInnerGeo, flameInnerMat);
+    flameInner.position.set(cx, 0.868, 0);
+    flameInner.visible = false;
+    iceAssembly.add(flameInner);
+
+    const flameOuterMat = new THREE.MeshBasicMaterial({
+      color: 0xf97316,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const flameOuter = new THREE.Mesh(flameOuterGeo, flameOuterMat);
+    flameOuter.position.set(cx, 0.865, 0);
+    flameOuter.visible = false;
+    iceAssembly.add(flameOuter);
+
+    // Articulated Connecting Rod (origin strictly at Crankpin Center -> zero clipping)
+    const conRod = new THREE.Group();
+    const bigEndMesh = new THREE.Mesh(bigEndGeo, matCarrierCrimson);
+    conRod.add(bigEndMesh);
+    const capBoltMesh = new THREE.Mesh(capBoltGeo, matDarkIron);
+    conRod.add(capBoltMesh);
+    const shankMesh = new THREE.Mesh(rodShankGeo, matCarrierCrimson);
+    shankMesh.position.y = rodLen * 0.5;
+    conRod.add(shankMesh);
+    const smallEndMesh = new THREE.Mesh(smallEndGeo, matCarrierCrimson);
+    smallEndMesh.position.y = rodLen;
+    conRod.add(smallEndMesh);
     iceAssembly.add(conRod);
 
-    pistons.push({ pistonHead, conRod, crankAngleOffset: phase, xPos: cx });
+    pistons.push({
+      pistonHead,
+      conRod,
+      crankAngleOffset: phase,
+      firingThetaOffset: firingPhase,
+      xPos: cx,
+      sparkCore,
+      sparkMat,
+      flameInner,
+      flameInnerMat,
+      flameOuter,
+      flameOuterMat,
+      sparkEnv: 0,
+      flameEnv: 0,
+    });
   }
 
   // Prominent ICE Rotation Direction Ring well clear of flywheel
   const iceIndicator = createRotationIndicatorRig(0.76, COMPONENT_COLORS.ice.threeHex, 1.05);
-  iceIndicator.group.position.set(1.55, 0, 0);
+  iceIndicator.group.position.set(1.62, 0, 0);
   iceAssembly.add(iceIndicator.group);
 
   const iceLabelAnchor = new THREE.Object3D();
-  iceLabelAnchor.position.set(-0.15, 1.55, 0);
+  iceLabelAnchor.position.set(-0.22, -0.48, 0.15);
   iceAssembly.add(iceLabelAnchor);
 
   // ============================================================================
-  // 2. PLANETARY POWER SPLIT DEVICE (PSD — Open Center-Left at x = -1.75)
+  // 2. PLANETARY POWER SPLIT DEVICE (PSD — Open Center Stage at x = -1.65)
   // ============================================================================
-  const xPsd = -1.75;
+  const xPsd = -1.65;
 
   // 2A. THIN 4-SPOKED PLANETARY CARRIER + 4 CRIMSON PLANET GEARS (Same color as ICE!)
   const carrierRoot = new THREE.Group();
@@ -481,8 +559,8 @@ export function buildPowertrainScene(
   const carrierGroup = new THREE.Group();
   carrierRoot.add(carrierGroup);
 
-  // Long slim Crimson Input Shaft connecting ICE (-4.45) to Carrier (-2.10 -> local -0.35)
-  const iceShaftLen = 2.42;
+  // Slim Crimson Input Shaft connecting ICE Crankshaft (-3.67) to Carrier (-1.99 -> local -0.34)
+  const iceShaftLen = 1.72;
   const carrierInputShaft = new THREE.Mesh(
     new THREE.CylinderGeometry(0.082, 0.082, iceShaftLen, 24),
     matIceCrimson
@@ -568,8 +646,8 @@ export function buildPowertrainScene(
   sunGearMesh.receiveShadow = true;
   sunGroup.add(sunGearMesh);
 
-  // Long exposed Solar Amber Sun Shaft spanning from PSD (-1.75) to MG1 (+2.45 -> length 4.25)
-  const sunShaftLen = 4.25;
+  // Long exposed Solar Amber Sun Shaft spanning from PSD (-1.65) to MG1 (+2.80 -> length 4.45)
+  const sunShaftLen = 4.45;
   const sunHollowShaft = new THREE.Mesh(
     new THREE.CylinderGeometry(0.088, 0.088, sunShaftLen, 28),
     matMg1Amber
@@ -600,17 +678,17 @@ export function buildPowertrainScene(
   ringGearMesh.receiveShadow = true;
   ringGroup.add(ringGearMesh);
 
-  // Ring Counter Drive Gear sits at world x = +0.55 -> local x = 0.55 - (-1.75) = +2.30!
-  const localRingCounterX = 2.3;
+  // Ring Counter Drive Gear sits at world x = +0.80 -> local x = 0.80 - (-1.65) = +2.45 (extra wide open PSD viewing!)
+  const localRingCounterX = 2.45;
 
-  // 3 ultra-thin curved wire spokes connecting Ring Gear (local x=0.18, R=1.24) to Counter Drive Gear (local x=2.30, R=0.52)
+  // 3 ultra-thin curved wire spokes connecting Ring Gear (local x=0.18, R=1.24) to Counter Drive Gear (local x=2.45, R=0.52)
   // Leaves huge open space so PSD & Sun Shaft are completely unobstructed!
   for (let b = 0; b < 3; b++) {
     const ba = (b * Math.PI * 2) / 3 + Math.PI / 6;
     const armCurve = new THREE.CatmullRomCurve3([
       new THREE.Vector3(0.18, 1.24 * Math.cos(ba), 1.24 * Math.sin(ba)),
-      new THREE.Vector3(1.15, 1.16 * Math.cos(ba), 1.16 * Math.sin(ba)),
-      new THREE.Vector3(2.05, 0.72 * Math.cos(ba), 0.72 * Math.sin(ba)),
+      new THREE.Vector3(1.25, 1.16 * Math.cos(ba), 1.16 * Math.sin(ba)),
+      new THREE.Vector3(2.2, 0.72 * Math.cos(ba), 0.72 * Math.sin(ba)),
       new THREE.Vector3(localRingCounterX - 0.1, 0.5 * Math.cos(ba), 0.5 * Math.sin(ba)),
     ]);
     const armTube = new THREE.Mesh(
@@ -620,7 +698,7 @@ export function buildPowertrainScene(
     ringGroup.add(armTube);
   }
 
-  // Cyan Ring Counter Drive Gear (40T, m2=0.032, R=0.640) at world x = +0.55
+  // Cyan Ring Counter Drive Gear (40T, m2=0.032, R=0.640) at world x = +0.80
   const ringCounterDriveGeo = createExternalGearGeometry({
     teeth: PSD_CONSTANTS.Z_RING_COUNTER_DRIVE,
     module: m2,
@@ -637,10 +715,10 @@ export function buildPowertrainScene(
   ringGroup.add(ringCounterDriveMesh);
 
   // ============================================================================
-  // 3. MG1 — COMPACT SMALL GENERATOR / STARTER (x = +2.45 on Axis 1, Solar Amber)
+  // 3. MG1 — COMPACT SMALL GENERATOR / STARTER (x = +2.80 on Axis 1, Solar Amber)
   //    Visibly smaller than MG2 just like the real Toyota transaxle!
   // ============================================================================
-  const xMg1 = 2.45;
+  const xMg1 = 2.8;
   const mg1Root = new THREE.Group();
   mg1Root.position.set(xMg1, y1, z1);
   scene.add(mg1Root);
@@ -713,13 +791,13 @@ export function buildPowertrainScene(
   mg1Root.add(mg1Indicator.group);
 
   const mg1LabelAnchor = new THREE.Object3D();
-  mg1LabelAnchor.position.set(0.1, 0.92, 0);
+  mg1LabelAnchor.position.set(0.38, 0.72, 0);
   mg1Root.add(mg1LabelAnchor);
 
   // ============================================================================
   // 4. COUNTERSHAFT & CONNECTED GEARS (Axis 3: All Electric Cyan — Same as Ring & MG2!)
   // ============================================================================
-  const xCounterStart = 0.55;
+  const xCounterStart = 0.8;
   const counterRoot = new THREE.Group();
   counterRoot.position.set(xCounterStart, y3, z3);
   scene.add(counterRoot);
@@ -728,7 +806,7 @@ export function buildPowertrainScene(
   const counterShaftGroup = new THREE.Group();
   counterRoot.add(counterShaftGroup);
 
-  // Counter Driven Gear #1 (44T, m2=0.032, R=0.704) at world x = +0.55 (meshes with Ring Counter Gear!)
+  // Counter Driven Gear #1 (44T, m2=0.032, R=0.704) at world x = +0.80 (meshes with Ring Counter Gear!)
   const counterDrivenGeo = createExternalGearGeometry({
     teeth: PSD_CONSTANTS.Z_COUNTER_DRIVEN,
     module: m2,
@@ -743,22 +821,22 @@ export function buildPowertrainScene(
   counterRingMeshGear.castShadow = true;
   counterShaftGroup.add(counterRingMeshGear);
 
-  // Counter Driven Gear #2 at local x = +1.40 (world x = +1.95, meshes with MG2's 13T Pinion!)
+  // Counter Driven Gear #2 at local x = +1.40 (world x = +2.20, meshes with MG2's 13T Pinion!)
   const counterMg2MeshGear = new THREE.Mesh(counterDrivenGeo, matCyanSecondary);
   counterMg2MeshGear.position.set(1.4, 0, 0);
   counterMg2MeshGear.castShadow = true;
   counterShaftGroup.add(counterMg2MeshGear);
 
-  // Exposed Cyan Countershaft spanning world x = +0.55 -> +3.10 (local 0 -> +2.55)
+  // Exposed Cyan Countershaft spanning world x = +0.80 -> +3.45 (local 0 -> +2.65)
   const counterAxle = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.088, 0.088, 2.75, 24),
+    new THREE.CylinderGeometry(0.088, 0.088, 2.85, 24),
     matMg2Cyan
   );
   counterAxle.rotation.z = Math.PI / 2;
-  counterAxle.position.set(1.28, 0, 0);
+  counterAxle.position.set(1.32, 0, 0);
   counterShaftGroup.add(counterAxle);
 
-  // Cyan Final Drive Pinion (18T, m3=0.032, R=0.288) at local x = +2.55 (world x = +3.10)
+  // Cyan Final Drive Pinion (18T, m3=0.032, R=0.288) at local x = +2.65 (world x = +3.45)
   const finalPinionGeo = createExternalGearGeometry({
     teeth: PSD_CONSTANTS.Z_FINAL_PINION,
     module: m3,
@@ -767,15 +845,15 @@ export function buildPowertrainScene(
     bevelSize: 0.008,
   });
   const finalPinionMesh = new THREE.Mesh(finalPinionGeo, matMg2Cyan);
-  finalPinionMesh.position.set(2.55, 0, 0);
+  finalPinionMesh.position.set(2.65, 0, 0);
   finalPinionMesh.castShadow = true;
   counterShaftGroup.add(finalPinionMesh);
 
   // ============================================================================
-  // 5. MG2 — LARGE HIGH-TORQUE TRACTION MOTOR (x = +4.45 on Axis 2, Electric Cyan!)
+  // 5. MG2 — LARGE HIGH-TORQUE TRACTION MOTOR (x = +4.90 on Axis 2, Electric Cyan!)
   //    Substantially larger diameter & stack length than MG1!
   // ============================================================================
-  const xMg2 = 4.45;
+  const xMg2 = 4.9;
   const mg2Root = new THREE.Group();
   mg2Root.position.set(xMg2, y2, z2);
   scene.add(mg2Root);
@@ -818,14 +896,14 @@ export function buildPowertrainScene(
   const mg2RotorGroup = new THREE.Group();
   mg2Root.add(mg2RotorGroup);
 
-  // Long exposed Cyan MG2 Shaft reaching left to world x = +1.95 (local x = 1.95 - 4.45 = -2.50)
-  const mg2ShaftLen = 3.25;
+  // Long exposed Cyan MG2 Shaft reaching left to world x = +2.20 (local x = 2.20 - 4.90 = -2.70)
+  const mg2ShaftLen = 3.45;
   const mg2Shaft = new THREE.Mesh(
     new THREE.CylinderGeometry(0.09, 0.09, mg2ShaftLen, 24),
     matMg2Cyan
   );
   mg2Shaft.rotation.z = Math.PI / 2;
-  mg2Shaft.position.set(-1.02, 0, 0);
+  mg2Shaft.position.set(-1.12, 0, 0);
   mg2Shaft.castShadow = true;
   mg2RotorGroup.add(mg2Shaft);
 
@@ -853,7 +931,7 @@ export function buildPowertrainScene(
     mg2RotorGroup.add(bar);
   }
 
-  // Cyan MG2 Reduction Pinion (13T, m2=0.032, R=0.208) at local x = -2.50 (world x = +1.95)
+  // Cyan MG2 Reduction Pinion (13T, m2=0.032, R=0.208) at local x = -2.70 (world x = +2.20)
   const mg2PinionGeo = createExternalGearGeometry({
     teeth: PSD_CONSTANTS.Z_MG2_PINION,
     module: m2,
@@ -862,7 +940,7 @@ export function buildPowertrainScene(
     bevelSize: 0.008,
   });
   const mg2PinionMesh = new THREE.Mesh(mg2PinionGeo, matMg2Cyan);
-  mg2PinionMesh.position.set(-2.5, 0, 0);
+  mg2PinionMesh.position.set(-2.7, 0, 0);
   mg2PinionMesh.castShadow = true;
   mg2RotorGroup.add(mg2PinionMesh);
 
@@ -872,13 +950,13 @@ export function buildPowertrainScene(
   mg2Root.add(mg2Indicator.group);
 
   const mg2LabelAnchor = new THREE.Object3D();
-  mg2LabelAnchor.position.set(0.05, 1.22, 0);
+  mg2LabelAnchor.position.set(-0.05, -0.82, 0.15);
   mg2Root.add(mg2LabelAnchor);
 
   // ============================================================================
   // 6. DIFFERENTIAL, FINAL AXLE & DRIVE WHEEL (Strictly Drive Violet #8B5CF6!)
   // ============================================================================
-  const xDiff = 3.1;
+  const xDiff = 3.45;
   const wheelRoot = new THREE.Group();
   wheelRoot.position.set(xDiff, y4, z4);
   scene.add(wheelRoot);
@@ -887,7 +965,7 @@ export function buildPowertrainScene(
   const diffWheelGroup = new THREE.Group();
   wheelRoot.add(diffWheelGroup);
 
-  // Differential Final Drive Ring Gear (52T, m3=0.032, R=0.832) at world x = +3.10
+  // Differential Final Drive Ring Gear (52T, m3=0.032, R=0.832) at world x = +3.45
   const finalRingGeo = createExternalGearGeometry({
     teeth: PSD_CONSTANTS.Z_FINAL_RING,
     module: m3,
@@ -906,8 +984,8 @@ export function buildPowertrainScene(
   diffCage.scale.set(1.15, 0.9, 0.9);
   diffWheelGroup.add(diffCage);
 
-  // Long exposed Drive Violet Final Axle spanning world x = +3.10 -> +6.35 (local 0 -> +3.25)
-  const localWheelX = 3.25;
+  // Extended Drive Violet Final Axle spanning world x = +3.45 -> +7.90 (local 0 -> +4.45, clear of MG2!)
+  const localWheelX = 4.45;
   const rightDriveAxle = new THREE.Mesh(
     new THREE.CylinderGeometry(0.088, 0.088, localWheelX + 0.35, 24),
     matWheelViolet
@@ -942,6 +1020,33 @@ export function buildPowertrainScene(
   brakeDisc.rotation.z = Math.PI / 2;
   brakeDisc.position.set(localWheelX - 0.14, 0, 0);
   diffWheelGroup.add(brakeDisc);
+
+  // Additive glowing rotor faces + outer heat halo so friction braking is vividly visible from afar
+  const brakeHeatGlowMat = new THREE.MeshBasicMaterial({
+    color: 0xff5a1f,
+    transparent: true,
+    opacity: 0,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  const brakeGlowGroup = new THREE.Group();
+  brakeGlowGroup.position.set(localWheelX - 0.14, 0, 0);
+  brakeGlowGroup.visible = false;
+  const brakeFaceGlowGeo = new THREE.RingGeometry(0.24, 0.548, 36);
+  for (const offsetX of [-0.034, 0.034]) {
+    const faceGlow = new THREE.Mesh(brakeFaceGlowGeo, brakeHeatGlowMat);
+    faceGlow.rotation.y = Math.PI / 2;
+    faceGlow.position.x = offsetX;
+    brakeGlowGroup.add(faceGlow);
+  }
+  const brakeRimHalo = new THREE.Mesh(
+    new THREE.TorusGeometry(0.505, 0.075, 12, 36),
+    brakeHeatGlowMat
+  );
+  brakeRimHalo.rotation.y = Math.PI / 2;
+  brakeGlowGroup.add(brakeRimHalo);
+  diffWheelGroup.add(brakeGlowGroup);
 
   const caliperBody = new THREE.Mesh(
     new THREE.BoxGeometry(0.18, 0.34, 0.24),
@@ -1032,28 +1137,11 @@ export function buildPowertrainScene(
   const hvSystemGroup = new THREE.Group();
   scene.add(hvSystemGroup);
 
-  const hvDeckY = y1 + 1.52; // +2.97 (Clearly above ICE & Planetary Gear!)
-  const battPos = new THREE.Vector3(-4.02, hvDeckY, z1);
-  const pcuPos = new THREE.Vector3(-2.68, hvDeckY, z1);
+  const hvDeckY = y1 + 1.72; // +3.17 (Elevated high above ICE & Planetary Gear for full visibility!)
+  const battPos = new THREE.Vector3(-4.55, hvDeckY, z1);
+  const pcuPos = new THREE.Vector3(-3.05, hvDeckY, z1);
 
-  // Slim structural rear gantry tray & support column (behind shaft so 0% occlusion)
-  const hvTrayDeck = new THREE.Mesh(
-    new THREE.BoxGeometry(2.65, 0.07, 0.84),
-    matDarkIron
-  );
-  hvTrayDeck.position.set(-3.38, hvDeckY - 0.23, z1);
-  hvTrayDeck.castShadow = true;
-  hvSystemGroup.add(hvTrayDeck);
-
-  const gantryHeight = hvDeckY - 0.25 - groundY;
-  const hvSupportPost = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.055, 0.075, gantryHeight, 16),
-    matDarkIron
-  );
-  hvSupportPost.position.set(-3.38, groundY + gantryHeight * 0.5, z1 - 0.36);
-  hvSystemGroup.add(hvSupportPost);
-
-  // Li-Ion HV Battery Pack (Emerald #10b981 color-coded)
+  // NiMH HV Battery Pack (Emerald #10b981 color-coded)
   const battCase = new THREE.Mesh(
     new THREE.BoxGeometry(1.48, 0.34, 0.74),
     new THREE.MeshStandardMaterial({ color: 0x064e3b, roughness: 0.42, metalness: 0.62 })
@@ -1087,7 +1175,7 @@ export function buildPowertrainScene(
   hvSystemGroup.add(pcuCap);
 
   const batteryLabelAnchor = new THREE.Object3D();
-  batteryLabelAnchor.position.set(-3.38, hvDeckY + 0.56, z1);
+  batteryLabelAnchor.position.set(-3.82, hvDeckY + 0.56, z1);
   hvSystemGroup.add(batteryLabelAnchor);
 
   const hvCableMat = new THREE.MeshStandardMaterial({
@@ -1096,22 +1184,22 @@ export function buildPowertrainScene(
     metalness: 0.5,
   });
 
-  // High-Voltage 3D Conduits from Elevated PCU to Battery, MG1, and MG2
+  // High-Voltage 3D Conduits arched cleanly above Planetary Gear to Battery, MG1, and MG2
   const curveBattToPcu = new THREE.CatmullRomCurve3([
     new THREE.Vector3(battPos.x + 0.72, battPos.y + 0.08, battPos.z + 0.18),
-    new THREE.Vector3(-3.26, hvDeckY + 0.12, z1 + 0.22),
+    new THREE.Vector3(-3.7, hvDeckY + 0.12, z1 + 0.22),
     new THREE.Vector3(pcuPos.x - 0.42, pcuPos.y + 0.08, pcuPos.z + 0.18),
   ]);
   const curveMg1ToPcu = new THREE.CatmullRomCurve3([
     new THREE.Vector3(xMg1, y1 + 0.42, z1),
-    new THREE.Vector3(0.65, y1 + 1.68, z1 - 0.08),
-    new THREE.Vector3(-1.35, hvDeckY + 0.22, z1 - 0.08),
+    new THREE.Vector3(0.85, hvDeckY + 0.24, z1 - 0.12),
+    new THREE.Vector3(-1.35, hvDeckY + 0.32, z1 - 0.12),
     new THREE.Vector3(pcuPos.x + 0.42, pcuPos.y + 0.08, pcuPos.z - 0.12),
   ]);
   const curvePcuToMg2 = new THREE.CatmullRomCurve3([
     new THREE.Vector3(pcuPos.x + 0.42, pcuPos.y + 0.02, pcuPos.z + 0.18),
-    new THREE.Vector3(-0.85, hvDeckY + 0.08, z1 + 0.35),
-    new THREE.Vector3(2.25, y2 + 1.55, z2 * 0.45),
+    new THREE.Vector3(-0.75, hvDeckY + 0.15, z1 + 0.35),
+    new THREE.Vector3(2.6, y2 + 1.65, z2 * 0.45),
     new THREE.Vector3(xMg2 - 0.15, y2 + 0.76, z2),
   ]);
 
@@ -1162,8 +1250,8 @@ export function buildPowertrainScene(
     makeStream(
       'iceToCarrier',
       [
-        new THREE.Vector3(xIce + 0.9, y1 + 0.16, z1 + 0.16),
-        new THREE.Vector3(-3.6, y1 + 0.16, z1 + 0.16),
+        new THREE.Vector3(xIce + 1.15, y1 + 0.16, z1 + 0.16),
+        new THREE.Vector3((xIce + 1.15 + xPsd - 0.35) * 0.5, y1 + 0.16, z1 + 0.16),
         new THREE.Vector3(xPsd - 0.35, y1 + 0.22, z1 + 0.18),
       ],
       COMPONENT_COLORS.ice.threeHex,
@@ -1174,8 +1262,8 @@ export function buildPowertrainScene(
       'carrierToRing',
       [
         new THREE.Vector3(xPsd + 0.15, y1 + 0.85, z1 + 0.55),
-        new THREE.Vector3(-0.55, y1 + 0.55, z1 + 0.45),
-        new THREE.Vector3(0.55, y3 + 0.48, z3 - 0.05),
+        new THREE.Vector3(-0.3, y1 + 0.55, z1 + 0.45),
+        new THREE.Vector3(xCounterStart, y3 + 0.48, z3 - 0.05),
       ],
       COMPONENT_COLORS.mg2.threeHex,
       COMPONENT_COLORS.mg2.threeHex,
@@ -1185,7 +1273,7 @@ export function buildPowertrainScene(
       'carrierToSun',
       [
         new THREE.Vector3(xPsd + 0.2, y1 + 0.16, z1 + 0.16),
-        new THREE.Vector3(0.45, y1 + 0.16, z1 + 0.16),
+        new THREE.Vector3(0.6, y1 + 0.16, z1 + 0.16),
         new THREE.Vector3(xMg1 - 0.25, y1 + 0.16, z1 + 0.16),
       ],
       COMPONENT_COLORS.mg1.threeHex,
@@ -1217,8 +1305,8 @@ export function buildPowertrainScene(
       'mg2ToCounter',
       [
         new THREE.Vector3(xMg2 - 0.5, y2 - 0.14, z2 - 0.12),
-        new THREE.Vector3(3.15, y2 - 0.16, z2 - 0.14),
-        new THREE.Vector3(1.95, y3 + 0.35, z3 + 0.22),
+        new THREE.Vector3(3.5, y2 - 0.16, z2 - 0.14),
+        new THREE.Vector3(2.2, y3 + 0.35, z3 + 0.22),
       ],
       COMPONENT_COLORS.mg2.threeHex,
       COMPONENT_COLORS.battery.threeHex,
@@ -1227,14 +1315,14 @@ export function buildPowertrainScene(
     makeStream(
       'counterToWheel',
       [
-        new THREE.Vector3(0.75, y3 - 0.14, z3 + 0.2),
+        new THREE.Vector3(xCounterStart + 0.2, y3 - 0.14, z3 + 0.2),
         new THREE.Vector3(xDiff, y4 + 0.2, z4 + 0.12),
-        new THREE.Vector3(4.75, y4 + 0.2, z4 + 0.12),
-        new THREE.Vector3(6.15, y4 + 0.2, z4 + 0.12),
+        new THREE.Vector3(xDiff + localWheelX * 0.52, y4 + 0.2, z4 + 0.12),
+        new THREE.Vector3(xDiff + localWheelX - 0.2, y4 + 0.2, z4 + 0.12),
       ],
       COMPONENT_COLORS.wheel.threeHex,
       COMPONENT_COLORS.mg2.threeHex,
-      12
+      13
     ),
   ];
 
@@ -1242,10 +1330,12 @@ export function buildPowertrainScene(
   // KINEMATIC & VISUAL UPDATE LOOP
   // ============================================================================
   const BASE_RPM_TO_RAD_S = 0.00175;
+  const REALISTIC_RPM_TO_RAD_S = (Math.PI * 2) / 60;
   let thetaIce = 0;
   let thetaSun = 0;
   let thetaRing = 0;
   let smoothedExplode = 0;
+  let smoothedBrakeHeat = 0;
 
   function updateIndicator(rig: RotationIndicatorRig, rpm: number, dt: number) {
     const dir =
@@ -1265,19 +1355,30 @@ export function buildPowertrainScene(
     state: PowertrainState,
     dt: number,
     visualSpinScale: number,
+    animationSpeedMode: AnimationSpeedMode,
     explodeFactor: number,
     showStreams: boolean
   ) {
     const simDt = dt * visualSpinScale;
-    const k = BASE_RPM_TO_RAD_S;
+    const k =
+      animationSpeedMode === AnimationSpeedMode.REALISTIC
+        ? REALISTIC_RPM_TO_RAD_S
+        : BASE_RPM_TO_RAD_S;
 
+    const prevThetaIce = thetaIce;
     thetaIce += state.iceRpm * k * simDt;
     thetaSun += state.mg1Rpm * k * simDt;
     thetaRing =
       (PSD_CONSTANTS.Z_SUN + PSD_CONSTANTS.Z_RING) * (thetaIce / PSD_CONSTANTS.Z_RING) -
       (PSD_CONSTANTS.Z_SUN / PSD_CONSTANTS.Z_RING) * thetaSun;
 
-    // 1. ICE Crankshaft & Pistons
+    const iceStatus = classifyIceOperatingStatus(
+      state.iceRpm,
+      state.iceFuelActive,
+      state.flows.iceToCarrierKw
+    );
+
+    // 1. ICE Crankshaft, Articulated Conrods, Pistons & 1-3-4-2 Ignition/Combustion Glow
     crankGroup.rotation.x = thetaIce;
     for (let i = 0; i < pistons.length; i++) {
       const p = pistons[i];
@@ -1286,8 +1387,88 @@ export function buildPowertrainScene(
       const pinZ = crankThrow * Math.sin(ang);
       const headY = pinY + Math.sqrt(Math.max(0.01, rodLen * rodLen - pinZ * pinZ));
       p.pistonHead.position.set(p.xPos, headY, 0);
-      p.conRod.position.set(p.xPos, (pinY + headY) * 0.5, pinZ * 0.5);
+      p.conRod.position.set(p.xPos, pinY, pinZ);
       p.conRod.rotation.x = Math.atan2(-pinZ, headY - pinY);
+
+      if (iceStatus.isCombusting) {
+        const currCycle =
+          (((thetaIce - p.firingThetaOffset) % FOUR_PI) + FOUR_PI) % FOUR_PI;
+
+        // Exact unwrapped cycle-index crossing guarantees spark/combustion never alias even at 6,000 RPM Realistic mode
+        const prevCycleIdx = Math.floor((prevThetaIce - p.firingThetaOffset) / FOUR_PI);
+        const currCycleIdx = Math.floor((thetaIce - p.firingThetaOffset) / FOUR_PI);
+        const crossedFiringTdc = currCycleIdx !== prevCycleIdx;
+        const inSparkWindow = currCycle >= FOUR_PI - 0.25 || currCycle <= 0.17;
+        if (crossedFiringTdc || inSparkWindow) {
+          p.sparkEnv = 1.0;
+        } else {
+          p.sparkEnv *= Math.exp(-26 * dt);
+        }
+
+        // Power-stroke combustion flame front: ignites right after TDC, peaks ~10° ATDC, fades down stroke
+        let targetFlame = 0;
+        if (currCycle < 2.25) {
+          targetFlame =
+            currCycle < 0.14
+              ? 0.45 + (currCycle / 0.14) * 0.55
+              : Math.exp(-(currCycle - 0.14) * 1.65);
+        } else if (currCycle > FOUR_PI - 0.14) {
+          targetFlame = (1 - (FOUR_PI - currCycle) / 0.14) * 0.45;
+        }
+        p.flameEnv = Math.max(
+          targetFlame,
+          crossedFiringTdc ? 0.92 : 0,
+          p.flameEnv * Math.exp(-16 * dt)
+        );
+      } else {
+        // Fuel-cut air-pumping, vacuum spin, or stopped: immediately quench ignition & combustion
+        p.sparkEnv = 0;
+        p.flameEnv *= Math.exp(-28 * dt);
+      }
+
+      if (p.sparkEnv > 0.03 && iceStatus.isCombusting) {
+        p.sparkCore.visible = true;
+        p.sparkCore.scale.setScalar(0.85 + p.sparkEnv * 0.85);
+        p.sparkMat.color.lerpColors(_sparkBlueColor, _sparkWhiteColor, p.sparkEnv);
+        p.sparkMat.opacity = Math.min(1, p.sparkEnv * (0.85 + 0.15 * iceStatus.loadFraction));
+      } else {
+        p.sparkCore.visible = false;
+      }
+
+      const flameMag =
+        p.flameEnv * (iceStatus.isCombusting ? 0.68 + 0.32 * iceStatus.loadFraction : 0);
+      if (flameMag > 0.025) {
+        const chamberY = headY + 0.144;
+        p.flameInner.visible = true;
+        p.flameOuter.visible = true;
+        p.flameInner.position.y = chamberY;
+        p.flameOuter.position.y = chamberY + 0.012;
+
+        // Fill full piston diameter (R ≈ 0.145) cleanly while blooming outward slightly on peak pressure
+        const boreRadial = 0.99 + flameMag * 0.04;
+        const boreHeight = 0.55 + flameMag * 0.78;
+        p.flameInner.scale.set(boreRadial, boreHeight, boreRadial);
+
+        const haloRadial = 0.98 + flameMag * 0.34;
+        const haloHeight = 0.5 + flameMag * 0.54;
+        p.flameOuter.scale.set(haloRadial, haloHeight, haloRadial);
+
+        p.flameInnerMat.color.lerpColors(
+          _flameWarmColor,
+          _flameHotColor,
+          Math.min(1, iceStatus.loadFraction * 0.55 + p.flameEnv * 0.45)
+        );
+        p.flameOuterMat.color.lerpColors(
+          _flameDeepColor,
+          _flameWarmColor,
+          Math.min(1, 0.45 + iceStatus.loadFraction * 0.55)
+        );
+        p.flameInnerMat.opacity = Math.min(0.98, flameMag * 1.05);
+        p.flameOuterMat.opacity = Math.min(0.86, flameMag * 0.84);
+      } else {
+        p.flameInner.visible = false;
+        p.flameOuter.visible = false;
+      }
     }
 
     // 2. Thin Spoked Planetary Carrier & 4 Crimson Planet Gears
@@ -1342,15 +1523,26 @@ export function buildPowertrainScene(
     );
     diffWheelGroup.rotation.x = thetaWheel;
 
-    // 5. Dynamometer Roller & Brake Glow
+    // 5. Dynamometer Roller & Pronounced Thermal Brake Rotor Glow
     dynoRollerMesh.rotation.x = -thetaWheel * (tireOuterRadius / dynoRadius);
-    const brakeGlowTarget = Math.min(0.85, state.flows.frictionBrakeKw * 0.035);
-    brakeDiscMat.emissiveIntensity = THREE.MathUtils.damp(
-      brakeDiscMat.emissiveIntensity,
-      brakeGlowTarget,
-      6,
-      dt
-    );
+    const frictionHeat = Math.min(1, state.flows.frictionBrakeKw / 14);
+    const pedalMovingHeat =
+      Math.abs(state.speedKmh) > 1.2 && state.brakePercent > 2
+        ? Math.min(0.9, (state.brakePercent / 100) * Math.min(1, Math.abs(state.speedKmh) / 24))
+        : 0;
+    const targetBrakeHeat = Math.max(frictionHeat, pedalMovingHeat);
+    const heatLambda = targetBrakeHeat > smoothedBrakeHeat ? 9.5 : 3.6;
+    smoothedBrakeHeat = THREE.MathUtils.damp(smoothedBrakeHeat, targetBrakeHeat, heatLambda, dt);
+
+    brakeDiscMat.emissive.lerpColors(_brakeCoolGlow, _brakeHotGlow, smoothedBrakeHeat);
+    brakeDiscMat.emissiveIntensity = smoothedBrakeHeat * 3.8;
+    if (smoothedBrakeHeat > 0.015) {
+      brakeGlowGroup.visible = true;
+      brakeHeatGlowMat.color.lerpColors(_brakeCoolGlow, _brakeHotGlow, smoothedBrakeHeat);
+      brakeHeatGlowMat.opacity = Math.min(0.92, smoothedBrakeHeat * 0.94);
+    } else {
+      brakeGlowGroup.visible = false;
+    }
 
     // 6. Smooth Exploded View
     smoothedExplode = THREE.MathUtils.damp(smoothedExplode, explodeFactor, 7.5, dt);
