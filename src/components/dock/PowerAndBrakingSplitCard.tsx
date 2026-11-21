@@ -1,4 +1,5 @@
 import React from 'react';
+import { useI18n } from '../../i18n/I18nContext';
 import { PowertrainState } from '../../types/hybrid';
 
 interface PowerAndBrakingSplitCardProps {
@@ -15,6 +16,8 @@ export const PowerAndBrakingSplitCard: React.FC<PowerAndBrakingSplitCardProps> =
   horizontal = false,
   className = '',
 }) => {
+  const { t } = useI18n();
+  const dt = t.driveTab;
   const { propulsionSplit: prop, brakingSplit: brk } = state;
   const propActive = prop.icePercent + prop.evPercent > 0;
   const brkActive = brk.regenPercent + brk.mechPercent > 0;
@@ -30,18 +33,20 @@ export const PowerAndBrakingSplitCard: React.FC<PowerAndBrakingSplitCardProps> =
     >
       {/* 1. ICE vs EV Power & Torque Split + Combined System Power */}
       <div className="flex-1 min-w-0 space-y-0.5">
-        <div className="flex items-center justify-between gap-0.5 text-[7.5px] min-[760px]:text-[8.5px] min-[960px]:text-[9.5px] font-mono tabular-nums whitespace-nowrap">
+        <div className="flex items-center justify-between gap-0.5 text-[9px] min-[760px]:text-[9.5px] min-[960px]:text-[10.5px] font-mono tabular-nums whitespace-nowrap">
           <span className="text-red-400 font-semibold">ICE {prop.icePercent}%</span>
           <span
             className="text-slate-100 font-semibold"
-            title={`Net Combined Propulsion Power: ${Math.round(prop.combinedHp)} hp (${Math.round(
+            title={`${dt.comb}: ${Math.round(prop.combinedHp)} hp (${Math.round(
               prop.combinedKw
             )} kW)`}
           >
-            <span className="hidden min-[1020px]:inline">Comb </span>
+            <span className="hidden min-[1020px]:inline">{dt.comb} </span>
             {Math.round(prop.combinedHp)}hp
           </span>
-          <span className="text-cyan-400 font-semibold text-right">{prop.evPercent}% EV</span>
+          <span className="text-cyan-400 font-semibold text-right">
+            {prop.evPercent}% {dt.evLabel}
+          </span>
         </div>
 
         <div className="h-1.5 w-full rounded-full bg-slate-800 overflow-hidden flex">
@@ -59,7 +64,7 @@ export const PowerAndBrakingSplitCard: React.FC<PowerAndBrakingSplitCardProps> =
           )}
         </div>
 
-        <div className="flex items-center justify-between text-[7px] min-[760px]:text-[8px] min-[960px]:text-[9px] font-mono tabular-nums text-slate-300 whitespace-nowrap">
+        <div className="flex items-center justify-between text-[8.5px] min-[760px]:text-[9px] min-[960px]:text-[10px] font-mono tabular-nums text-slate-300 whitespace-nowrap">
           <span className="text-red-200/95">
             {Math.round(prop.iceHp)}hp·{Math.round(prop.iceTorqueNm)}Nm
           </span>
@@ -77,17 +82,17 @@ export const PowerAndBrakingSplitCard: React.FC<PowerAndBrakingSplitCardProps> =
 
       {/* 2. Regenerative vs Mechanical Braking Split */}
       <div className="flex-1 min-w-0 space-y-0.5">
-        <div className="flex items-center justify-between gap-0.5 text-[7.5px] min-[760px]:text-[8.5px] min-[960px]:text-[9.5px] font-mono tabular-nums whitespace-nowrap">
+        <div className="flex items-center justify-between gap-0.5 text-[9px] min-[760px]:text-[9.5px] min-[960px]:text-[10.5px] font-mono tabular-nums whitespace-nowrap">
           <span className="text-emerald-400 font-semibold">
-            <span className="min-[960px]:hidden">Reg </span>
-            <span className="hidden min-[960px]:inline">Regen </span>
+            <span className="min-[960px]:hidden">{dt.regShort} </span>
+            <span className="hidden min-[960px]:inline">{dt.regen} </span>
             {brk.regenPercent}%
           </span>
           <span className="text-slate-400">{totalBrakeHp > 0 ? `${totalBrakeHp}hp` : '0hp'}</span>
           <span className="text-amber-400 font-semibold text-right">
             {brk.mechPercent}%
-            <span className="min-[960px]:hidden"> Mch</span>
-            <span className="hidden min-[960px]:inline"> Mech</span>
+            <span className="min-[960px]:hidden"> {dt.mchShort}</span>
+            <span className="hidden min-[960px]:inline"> {dt.mech}</span>
           </span>
         </div>
 
@@ -106,7 +111,7 @@ export const PowerAndBrakingSplitCard: React.FC<PowerAndBrakingSplitCardProps> =
           )}
         </div>
 
-        <div className="flex items-center justify-between text-[7px] min-[760px]:text-[8px] min-[960px]:text-[9px] font-mono tabular-nums text-slate-300 whitespace-nowrap">
+        <div className="flex items-center justify-between text-[8.5px] min-[760px]:text-[9px] min-[960px]:text-[10px] font-mono tabular-nums text-slate-300 whitespace-nowrap">
           <span className="text-emerald-200/95">
             {Math.round(brk.regenHp)}hp·{Math.round(brk.regenTorqueNm)}Nm
           </span>

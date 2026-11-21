@@ -103,13 +103,13 @@ export const HybridPowerMeter: React.FC<HybridPowerMeterProps> = ({ state, class
             strokeWidth="10"
           />
 
-          <text x="10" y="91" className="fill-cyan-400 text-[10.5px] font-semibold">
+          <text x="10" y="91" className="fill-cyan-400 text-[11px] font-semibold">
             CHG
           </text>
-          <text x="53" y="10" className="fill-emerald-400 text-[10.5px] font-semibold">
+          <text x="53" y="10" className="fill-emerald-400 text-[11px] font-semibold">
             ECO
           </text>
-          <text x="139" y="91" className="fill-red-400 text-[10.5px] font-semibold">
+          <text x="139" y="91" className="fill-red-400 text-[11px] font-semibold">
             PWR
           </text>
 
@@ -135,7 +135,7 @@ export const HybridPowerMeter: React.FC<HybridPowerMeterProps> = ({ state, class
             x={cx}
             y={cy + 17}
             textAnchor="middle"
-            className="fill-slate-400 text-[11px] font-medium"
+            className="fill-slate-400 text-[11.5px] font-medium"
           >
             km/h
           </text>
@@ -148,12 +148,12 @@ export const HybridPowerMeter: React.FC<HybridPowerMeterProps> = ({ state, class
           className="flex-1 flex items-center justify-between gap-0.5 leading-none"
           title="Trip Odometer in km (resets on Reset)"
         >
-          <span className="text-[8px] min-[760px]:text-[8.5px] min-[960px]:text-[9.5px] font-sans font-medium text-slate-400 shrink-0">
+          <span className="text-[9px] min-[760px]:text-[9.5px] min-[960px]:text-[10.5px] font-sans font-medium text-slate-400 shrink-0">
             ODO
           </span>
-          <span className="text-[8.5px] min-[760px]:text-[9px] min-[960px]:text-[10px] font-semibold text-slate-100 whitespace-nowrap">
+          <span className="text-[9.5px] min-[760px]:text-[10px] min-[960px]:text-[11px] font-semibold text-slate-100 whitespace-nowrap">
             {odoNum}
-            <span className="text-[7.5px] min-[960px]:text-[8.5px] font-normal text-slate-400 ml-[1.5px]">
+            <span className="text-[8.5px] min-[960px]:text-[9.5px] font-normal text-slate-400 ml-[1.5px]">
               km
             </span>
           </span>
@@ -163,12 +163,12 @@ export const HybridPowerMeter: React.FC<HybridPowerMeterProps> = ({ state, class
           className="flex-1 flex items-center justify-between gap-0.5 leading-none"
           title="Average Fuel Consumption in km/L (resets on Reset)"
         >
-          <span className="text-[8px] min-[760px]:text-[8.5px] min-[960px]:text-[9.5px] font-sans font-medium text-slate-400 shrink-0">
+          <span className="text-[9px] min-[760px]:text-[9.5px] min-[960px]:text-[10.5px] font-sans font-medium text-slate-400 shrink-0">
             AVG
           </span>
-          <span className="text-[8.5px] min-[760px]:text-[9px] min-[960px]:text-[10px] font-semibold text-emerald-300 whitespace-nowrap">
+          <span className="text-[9.5px] min-[760px]:text-[10px] min-[960px]:text-[11px] font-semibold text-emerald-300 whitespace-nowrap">
             {avgNum}
-            <span className="text-[7.5px] min-[960px]:text-[8.5px] font-normal text-emerald-400/85 ml-[1.5px]">
+            <span className="text-[8.5px] min-[960px]:text-[9.5px] font-normal text-emerald-400/85 ml-[1.5px]">
               km/L
             </span>
           </span>
@@ -178,12 +178,12 @@ export const HybridPowerMeter: React.FC<HybridPowerMeterProps> = ({ state, class
           className="flex-1 flex items-center justify-between gap-0.5 leading-none"
           title="Total Gasoline Consumed in Liters (resets on Reset)"
         >
-          <span className="text-[8px] min-[760px]:text-[8.5px] min-[960px]:text-[9.5px] font-sans font-medium text-slate-400 shrink-0">
+          <span className="text-[9px] min-[760px]:text-[9.5px] min-[960px]:text-[10.5px] font-sans font-medium text-slate-400 shrink-0">
             FUEL
           </span>
-          <span className="text-[8.5px] min-[760px]:text-[9px] min-[960px]:text-[10px] font-semibold text-amber-300 whitespace-nowrap">
+          <span className="text-[9.5px] min-[760px]:text-[10px] min-[960px]:text-[11px] font-semibold text-amber-300 whitespace-nowrap">
             {fuelNum}
-            <span className="text-[7.5px] min-[960px]:text-[8.5px] font-normal text-amber-400/85 ml-[1.5px]">
+            <span className="text-[8.5px] min-[960px]:text-[9.5px] font-normal text-amber-400/85 ml-[1.5px]">
               L
             </span>
           </span>

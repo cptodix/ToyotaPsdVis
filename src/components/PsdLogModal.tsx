@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Trash2, X } from 'lucide-react';
+import { useI18n } from '../i18n/I18nContext';
 import { PsdLogCategory, PsdLogEntry } from '../types/hybrid';
 
 interface PsdLogModalProps {
@@ -30,6 +31,7 @@ export const PsdLogModal: React.FC<PsdLogModalProps> = ({
   onClose,
   onClear,
 }) => {
+  const { t } = useI18n();
   const [filter, setFilter] = useState<'ALL' | PsdLogCategory>('ALL');
 
   useEffect(() => {
@@ -61,22 +63,20 @@ export const PsdLogModal: React.FC<PsdLogModalProps> = ({
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-slate-800 bg-slate-950/70">
           <div>
-            <h2 className="text-sm font-display font-bold text-slate-100">
-              PSD Event &amp; Physics Log
+            <h2 className="text-base font-display font-bold text-slate-100">
+              {t.logModal.title}
             </h2>
-            <p className="text-[11px] text-slate-400">
-              Live log of hybrid mode transitions, power flow reversals, and shaft rotation changes
-            </p>
+            <p className="text-xs text-slate-400">{t.logModal.subtitle}</p>
           </div>
           <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={onClear}
               disabled={entries.length === 0}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-slate-700/70 bg-slate-900/80 text-[11px] text-slate-300 hover:text-white disabled:opacity-40 transition-colors"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-slate-700/70 bg-slate-900/80 text-xs text-slate-300 hover:text-white disabled:opacity-40 transition-colors"
             >
-              <Trash2 className="w-3 h-3" />
-              <span>Clear</span>
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>{t.logModal.clear}</span>
             </button>
             <button
               type="button"
@@ -90,14 +90,14 @@ export const PsdLogModal: React.FC<PsdLogModalProps> = ({
         </div>
 
         {/* Filter Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-b border-slate-800/80 bg-slate-900/45 text-[11px]">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-b border-slate-800/80 bg-slate-900/45 text-xs">
           <div className="flex items-center gap-1">
             {(
               [
-                { id: 'ALL', label: `All (${entries.length})` },
-                { id: 'HYBRID', label: 'Hybrid Status' },
-                { id: 'FLOW', label: 'Power Flow' },
-                { id: 'ROTATION', label: 'Rotation Dir' },
+                { id: 'ALL', label: `${t.logModal.filterAll} (${entries.length})` },
+                { id: 'HYBRID', label: t.logModal.filterHybrid },
+                { id: 'FLOW', label: t.logModal.filterFlow },
+                { id: 'ROTATION', label: t.logModal.filterRotation },
               ] as const
             ).map((f) => (
               <button
@@ -114,14 +114,14 @@ export const PsdLogModal: React.FC<PsdLogModalProps> = ({
               </button>
             ))}
           </div>
-          <span className="font-mono text-[10px] text-slate-400">Newest on top</span>
+          <span className="font-mono text-[11px] text-slate-400">{t.logModal.newestOnTop}</span>
         </div>
 
         {/* Scrollable Entries */}
         <div className="flex-1 overflow-y-auto p-3 space-y-2">
           {visibleEntries.length === 0 ? (
-            <div className="py-10 text-center text-xs text-slate-400">
-              No PSD transition events recorded yet. Drive, shift gears, or scrub manual sliders to inspect transitions.
+            <div className="py-10 text-center text-[13px] text-slate-400">
+              {t.logModal.empty}
             </div>
           ) : (
             visibleEntries.map((entry) => (
@@ -131,32 +131,32 @@ export const PsdLogModal: React.FC<PsdLogModalProps> = ({
               >
                 <div className="flex flex-wrap items-center justify-between gap-1.5">
                   <div className="flex flex-wrap items-center gap-1">
-                    <span className="font-mono text-[10px] text-slate-400 mr-0.5">
+                    <span className="font-mono text-[11px] text-slate-400 mr-0.5">
                       {entry.timestampLabel}
                     </span>
                     {entry.categories.map((cat) => (
                       <span
                         key={cat}
-                        className={`px-1.5 py-0.2 rounded border font-mono text-[9.5px] font-bold ${CATEGORY_STYLE[cat].cls}`}
+                        className={`px-1.5 py-0.2 rounded border font-mono text-[10.5px] font-bold ${CATEGORY_STYLE[cat].cls}`}
                       >
                         {CATEGORY_STYLE[cat].label}
                       </span>
                     ))}
-                    <span className="text-xs font-semibold text-slate-100 ml-0.5">
+                    <span className="text-[13px] font-semibold text-slate-100 ml-0.5">
                       {entry.title}
                     </span>
                   </div>
-                  <span className="font-mono tabular-nums text-[10.5px] text-violet-300 font-semibold">
+                  <span className="font-mono tabular-nums text-[11.5px] text-violet-300 font-semibold">
                     {Math.abs(entry.speedKmh)} km/h
                   </span>
                 </div>
 
-                <p className="text-[11.5px] text-slate-300 leading-relaxed">
-                  <span className="text-slate-400 font-medium">Why: </span>
+                <p className="text-[12.5px] text-slate-300 leading-relaxed">
+                  <span className="text-slate-400 font-medium">{t.logModal.whyPrefix}</span>
                   {entry.explanation}
                 </p>
 
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 pt-0.5 text-[10px] font-mono tabular-nums text-slate-400">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 pt-0.5 text-[11px] font-mono tabular-nums text-slate-400">
                   <span>
                     ICE <strong className="text-red-300">{entry.iceRpm}</strong> RPM
                   </span>
@@ -167,7 +167,7 @@ export const PsdLogModal: React.FC<PsdLogModalProps> = ({
                     MG2 <strong className="text-cyan-300">{entry.mg2Rpm}</strong> RPM
                   </span>
                   <span>
-                    Batt{' '}
+                    {t.logModal.battLabel}{' '}
                     <strong className="text-emerald-300">
                       {entry.batteryKw > 0
                         ? `-${entry.batteryKw.toFixed(1)} kW`

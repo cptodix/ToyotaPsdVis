@@ -1,5 +1,6 @@
 import React from 'react';
 import { Leaf } from 'lucide-react';
+import { useI18n } from '../../i18n/I18nContext';
 import { AutoDriveMode, GearPosition, PowertrainState } from '../../types/hybrid';
 import { CarEnergyFlowPreview } from '../CarEnergyFlowPreview';
 import { HybridPowerMeter } from '../HybridPowerMeter';
@@ -28,6 +29,8 @@ export const DriveSimulatorTab: React.FC<DriveSimulatorTabProps> = ({
   onBrakeChange,
   onRoadGradeChange,
 }) => {
+  const { t } = useI18n();
+  const dt = t.driveTab;
   const roundedGrade = Math.round(state.roadGradePercent);
 
   return (
@@ -49,7 +52,7 @@ export const DriveSimulatorTab: React.FC<DriveSimulatorTabProps> = ({
               key={g}
               type="button"
               onClick={() => onGearChange(g)}
-              className={`w-4 min-[920px]:w-5 h-[13px] min-[920px]:h-[14px] text-[9px] min-[920px]:text-[9.5px] leading-none font-mono font-bold rounded flex items-center justify-center transition-colors ${
+              className={`w-4.5 min-[920px]:w-5.5 h-[14px] min-[920px]:h-[15px] text-[10px] min-[920px]:text-[10.5px] leading-none font-mono font-bold rounded flex items-center justify-center transition-colors ${
                 state.gear === g
                   ? g === GearPosition.P
                     ? 'bg-sky-400 text-slate-950'
@@ -72,8 +75,8 @@ export const DriveSimulatorTab: React.FC<DriveSimulatorTabProps> = ({
           <button
             type="button"
             onClick={onToggleEvMode}
-            title="Dedicated EV Mode (<= 42 km/h when SoC >= 40%)"
-            className={`inline-flex items-center justify-center gap-0.5 px-0.5 h-[16px] min-[920px]:h-[17px] w-full rounded text-[8.5px] min-[920px]:text-[9.5px] font-semibold border transition-colors whitespace-nowrap ${
+            title={dt.evTooltip}
+            className={`inline-flex items-center justify-center gap-0.5 px-0.5 h-[17px] min-[920px]:h-[18px] w-full rounded text-[9.5px] min-[920px]:text-[10.5px] font-semibold border transition-colors whitespace-nowrap ${
               state.evModeRequested
                 ? 'bg-emerald-500 text-slate-950 border-emerald-300'
                 : 'bg-slate-950/65 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/15'
@@ -82,47 +85,44 @@ export const DriveSimulatorTab: React.FC<DriveSimulatorTabProps> = ({
             <Leaf className="w-2.5 h-2.5 shrink-0" />
             <span>
               {state.evModeRequested ? (
-                'EV ON'
+                dt.evOn
               ) : (
                 <>
-                  <span className="min-[920px]:hidden">EV</span>
-                  <span className="hidden min-[920px]:inline">EV Mode</span>
+                  <span className="min-[920px]:hidden">{dt.evShort}</span>
+                  <span className="hidden min-[920px]:inline">{dt.evMode}</span>
                 </>
               )}
             </span>
           </button>
 
-          <span className="text-[8px] min-[920px]:text-[8.5px] font-medium text-slate-400 leading-none text-center whitespace-nowrap">
-            AutoDrive
+          <span className="text-[9px] min-[920px]:text-[9.5px] font-medium text-slate-400 leading-none text-center whitespace-nowrap">
+            {dt.autoDrive}
           </span>
 
           <div className="grid grid-cols-2 gap-0.5 p-0.5 rounded bg-slate-950/70 border border-slate-800">
             {(
               [
-                { id: AutoDriveMode.OFF, label: 'Off', title: 'Manual Driving' },
-                { id: AutoDriveMode.CITY, label: 'City', title: 'City Traffic & Lights' },
-                { id: AutoDriveMode.HIGHWAY, label: 'Hwy', title: 'Highway Cruise & Overtake' },
-                {
-                  id: AutoDriveMode.MOUNTAIN,
-                  label: 'Mtn',
-                  title: 'Countryside Mountainous Road (Climbs & Descents)',
-                },
+                AutoDriveMode.OFF,
+                AutoDriveMode.CITY,
+                AutoDriveMode.HIGHWAY,
+                AutoDriveMode.MOUNTAIN,
               ] as const
-            ).map((m) => {
-              const active = autoDriveMode === m.id;
+            ).map((modeId) => {
+              const m = dt.autoModes[modeId];
+              const active = autoDriveMode === modeId;
               return (
                 <button
-                  key={m.id}
+                  key={modeId}
                   type="button"
                   title={m.title}
-                  onClick={() => onSelectAutoDriveMode(m.id)}
-                  className={`h-[15px] min-[920px]:h-[16px] rounded text-[8.5px] min-[920px]:text-[9px] leading-none font-medium transition-colors whitespace-nowrap ${
+                  onClick={() => onSelectAutoDriveMode(modeId)}
+                  className={`h-[16px] min-[920px]:h-[17px] rounded text-[9.5px] min-[920px]:text-[10px] leading-none font-medium transition-colors whitespace-nowrap ${
                     active
-                      ? m.id === AutoDriveMode.OFF
+                      ? modeId === AutoDriveMode.OFF
                         ? 'bg-slate-200 text-slate-950 font-semibold'
-                        : m.id === AutoDriveMode.CITY
+                        : modeId === AutoDriveMode.CITY
                           ? 'bg-amber-400 text-slate-950 font-semibold'
-                          : m.id === AutoDriveMode.HIGHWAY
+                          : modeId === AutoDriveMode.HIGHWAY
                             ? 'bg-cyan-400 text-slate-950 font-semibold'
                             : 'bg-emerald-400 text-slate-950 font-semibold'
                       : 'text-slate-400 hover:text-white'
@@ -141,14 +141,14 @@ export const DriveSimulatorTab: React.FC<DriveSimulatorTabProps> = ({
 
       {/* COL-3: Throttle, Brake & Incline Sliders */}
       <div className="flex flex-col justify-between gap-1 px-1 min-[760px]:px-1.5 py-1 rounded-lg bg-slate-900/45 border border-slate-700/45 w-full min-w-0 overflow-hidden">
-        <div className="flex items-center gap-0.5 min-[760px]:gap-1 text-[8.5px] min-[760px]:text-[9.5px] min-[960px]:text-[10px] min-w-0">
+        <div className="flex items-center gap-0.5 min-[760px]:gap-1 text-[9.5px] min-[760px]:text-[10.5px] min-[960px]:text-[11px] min-w-0">
           <label
             htmlFor="sim-throttle"
-            title="Throttle (0–100%)"
-            className="w-5 min-[960px]:w-10 text-slate-200 shrink-0 whitespace-nowrap"
+            title={`${dt.throttle} (0–100%)`}
+            className="w-6 min-[960px]:w-11 text-slate-200 shrink-0 whitespace-nowrap"
           >
-            <span className="min-[960px]:hidden">Thr</span>
-            <span className="hidden min-[960px]:inline">Throttle</span>
+            <span className="min-[960px]:hidden">{dt.thrShort}</span>
+            <span className="hidden min-[960px]:inline">{dt.throttle}</span>
           </label>
           <input
             id="sim-throttle"
@@ -160,19 +160,19 @@ export const DriveSimulatorTab: React.FC<DriveSimulatorTabProps> = ({
             onChange={(e) => onThrottleChange(Number(e.target.value))}
             className="ths-slider flex-1 min-w-0 text-emerald-400"
           />
-          <span className="w-6 min-[760px]:w-7 text-right font-mono tabular-nums text-emerald-400 shrink-0 whitespace-nowrap">
+          <span className="w-7 min-[760px]:w-8 text-right font-mono tabular-nums text-emerald-400 shrink-0 whitespace-nowrap">
             {Math.round(state.throttlePercent)}%
           </span>
         </div>
 
-        <div className="flex items-center gap-0.5 min-[760px]:gap-1 text-[8.5px] min-[760px]:text-[9.5px] min-[960px]:text-[10px] min-w-0">
+        <div className="flex items-center gap-0.5 min-[760px]:gap-1 text-[9.5px] min-[760px]:text-[10.5px] min-[960px]:text-[11px] min-w-0">
           <label
             htmlFor="sim-brake"
-            title="Brake (0–100%)"
-            className="w-5 min-[960px]:w-10 text-slate-200 shrink-0 whitespace-nowrap"
+            title={`${dt.brake} (0–100%)`}
+            className="w-6 min-[960px]:w-11 text-slate-200 shrink-0 whitespace-nowrap"
           >
-            <span className="min-[960px]:hidden">Brk</span>
-            <span className="hidden min-[960px]:inline">Brake</span>
+            <span className="min-[960px]:hidden">{dt.brkShort}</span>
+            <span className="hidden min-[960px]:inline">{dt.brake}</span>
           </label>
           <input
             id="sim-brake"
@@ -184,19 +184,19 @@ export const DriveSimulatorTab: React.FC<DriveSimulatorTabProps> = ({
             onChange={(e) => onBrakeChange(Number(e.target.value))}
             className="ths-slider flex-1 min-w-0 text-red-400"
           />
-          <span className="w-6 min-[760px]:w-7 text-right font-mono tabular-nums text-red-400 shrink-0 whitespace-nowrap">
+          <span className="w-7 min-[760px]:w-8 text-right font-mono tabular-nums text-red-400 shrink-0 whitespace-nowrap">
             {Math.round(state.brakePercent)}%
           </span>
         </div>
 
-        <div className="flex items-center gap-0.5 min-[760px]:gap-1 text-[8.5px] min-[760px]:text-[9.5px] min-[960px]:text-[10px] min-w-0">
+        <div className="flex items-center gap-0.5 min-[760px]:gap-1 text-[9.5px] min-[760px]:text-[10.5px] min-[960px]:text-[11px] min-w-0">
           <label
             htmlFor="sim-grade"
-            title="Road Incline (-50% to +50%)"
-            className="w-5 min-[960px]:w-10 text-slate-200 shrink-0 whitespace-nowrap"
+            title={dt.inclineTooltip}
+            className="w-6 min-[960px]:w-11 text-slate-200 shrink-0 whitespace-nowrap"
           >
-            <span className="min-[960px]:hidden">Inc</span>
-            <span className="hidden min-[960px]:inline">Incline</span>
+            <span className="min-[960px]:hidden">{dt.incShort}</span>
+            <span className="hidden min-[960px]:inline">{dt.incline}</span>
           </label>
           <input
             id="sim-grade"
@@ -211,8 +211,8 @@ export const DriveSimulatorTab: React.FC<DriveSimulatorTabProps> = ({
           <button
             type="button"
             onClick={() => onRoadGradeChange(0)}
-            title="Road Incline (-50% to +50%). Click value to reset to 0%."
-            className="w-6 min-[760px]:w-7 text-right font-mono tabular-nums text-amber-300 hover:text-white shrink-0 whitespace-nowrap"
+            title={dt.inclineTooltip}
+            className="w-7 min-[760px]:w-8 text-right font-mono tabular-nums text-amber-300 hover:text-white shrink-0 whitespace-nowrap"
           >
             {roundedGrade > 0 ? `+${roundedGrade}%` : `${roundedGrade}%`}
           </button>

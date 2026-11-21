@@ -87,7 +87,7 @@ export const BottomControlDock: React.FC<BottomControlDockProps> = ({
   return (
     <div
       id="bottom-control-dock"
-      className={`fixed bottom-1.5 left-1/2 -translate-x-1/2 z-30 w-[min(1120px,99vw)] max-w-[calc(100vw-6px)] transition-transform duration-200 ease-out ${
+      className={`fixed bottom-1.5 left-1/2 -translate-x-1/2 z-30 w-[min(1180px,99vw)] max-w-[calc(100vw-6px)] transition-transform duration-200 ease-out ${
         collapsed ? 'translate-y-[calc(100%-26px)]' : 'translate-y-0'
       }`}
     >

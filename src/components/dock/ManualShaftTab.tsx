@@ -1,6 +1,7 @@
 import React from 'react';
 import { RotateCcw, RotateCw, Square } from 'lucide-react';
 import { getRotationDirection, MG2_TO_RING_RATIO, PSD_CONSTANTS } from '../../drivetrain';
+import { useI18n } from '../../i18n/I18nContext';
 import { PowertrainState, RotationDir, SolveTarget } from '../../types/hybrid';
 
 interface ManualShaftTabProps {
@@ -16,6 +17,9 @@ export const ManualShaftTab: React.FC<ManualShaftTabProps> = ({
   onChangeSolveTarget,
   onManualShaftChange,
 }) => {
+  const { t } = useI18n();
+  const mt = t.manualTab;
+
   const setShaftDirection = (
     shaft: 'ICE' | 'MG1' | 'WHEEL_MG2',
     currentRpm: number,
@@ -32,14 +36,14 @@ export const ManualShaftTab: React.FC<ManualShaftTabProps> = ({
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-slate-300">
-        <span>Adjust speed &amp; rotation direction of each power source:</span>
+      <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-[13px] text-slate-300">
+        <span>{mt.instruction}</span>
         <div className="flex items-center gap-1.5">
-          <span className="text-slate-400">Auto-Solve:</span>
+          <span className="text-slate-400">{mt.autoSolve}</span>
           {(
             [
               { id: SolveTarget.MG1, label: 'MG1' },
-              { id: SolveTarget.WHEEL, label: 'MG2/Wheel' },
+              { id: SolveTarget.WHEEL, label: mt.mg2Wheel },
               { id: SolveTarget.ICE, label: 'ICE' },
             ] as const
           ).map((st) => (
@@ -62,8 +66,8 @@ export const ManualShaftTab: React.FC<ManualShaftTabProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         {/* ICE (Real life: CW >= 0 only; cannot spin CCW left of middle) */}
         <div className="p-2.5 rounded-lg bg-slate-900/45 border border-red-500/35 space-y-1.5">
-          <div className="flex items-center justify-between gap-1 text-xs">
-            <span className="font-semibold text-red-400 whitespace-nowrap">ICE · Carrier</span>
+          <div className="flex items-center justify-between gap-1 text-[13px]">
+            <span className="font-semibold text-red-400 whitespace-nowrap">{mt.iceCarrier}</span>
             <span className="font-mono tabular-nums text-slate-100 whitespace-nowrap">
               {Math.round(Math.max(0, state.iceRpm))} RPM
             </span>
@@ -91,16 +95,16 @@ export const ManualShaftTab: React.FC<ManualShaftTabProps> = ({
                 }
                 onManualShaftChange('ICE', raw);
               }}
-              title="ICE only spins CW (0 to 6,000 RPM) — CCW reverse rotation is mechanically blocked"
+              title={mt.iceNoCcwTooltip}
               className="ths-slider w-full relative z-10 text-red-500"
             />
           </div>
-          <div className="grid grid-cols-3 gap-1 text-[11px]">
+          <div className="grid grid-cols-3 gap-1 text-xs">
             <button
               type="button"
               disabled
               aria-disabled="true"
-              title="Disabled: Real 4-stroke ICE cannot spin CCW"
+              title={mt.iceNoCcwTooltip}
               className="inline-flex items-center justify-center gap-1 py-0.5 rounded bg-slate-900/45 text-slate-600 border border-slate-800/50 cursor-not-allowed opacity-55 line-through"
             >
               <RotateCcw className="w-3 h-3" />
@@ -135,8 +139,8 @@ export const ManualShaftTab: React.FC<ManualShaftTabProps> = ({
 
         {/* MG1 (Real life: spins both CCW & CW) */}
         <div className="p-2.5 rounded-lg bg-slate-900/45 border border-amber-500/35 space-y-1.5">
-          <div className="flex items-center justify-between gap-1 text-xs">
-            <span className="font-semibold text-amber-400 whitespace-nowrap">MG1 · Sun</span>
+          <div className="flex items-center justify-between gap-1 text-[13px]">
+            <span className="font-semibold text-amber-400 whitespace-nowrap">{mt.mg1Sun}</span>
             <span className="font-mono tabular-nums text-slate-100 whitespace-nowrap">
               {Math.round(state.mg1Rpm)} RPM
             </span>
@@ -162,7 +166,7 @@ export const ManualShaftTab: React.FC<ManualShaftTabProps> = ({
               className="ths-slider w-full relative z-10 text-amber-500"
             />
           </div>
-          <div className="grid grid-cols-3 gap-1 text-[11px]">
+          <div className="grid grid-cols-3 gap-1 text-xs">
             <button
               type="button"
               onClick={() => setShaftDirection('MG1', state.mg1Rpm, 3000, RotationDir.CCW)}
@@ -204,8 +208,8 @@ export const ManualShaftTab: React.FC<ManualShaftTabProps> = ({
 
         {/* MG2 / Ring / Wheel (Real life: REV CCW & FWD CW, center 0, RPM + km/h) */}
         <div className="p-2.5 rounded-lg bg-slate-900/45 border border-cyan-500/35 space-y-1.5">
-          <div className="flex items-center justify-between gap-1 text-xs">
-            <span className="font-semibold text-cyan-400 whitespace-nowrap">MG2 · Ring</span>
+          <div className="flex items-center justify-between gap-1 text-[13px]">
+            <span className="font-semibold text-cyan-400 whitespace-nowrap">{mt.mg2Ring}</span>
             <span className="font-mono tabular-nums text-slate-100 whitespace-nowrap">
               {Math.round(state.mg2Rpm)} RPM{' '}
               <span className="text-cyan-300 font-semibold">
@@ -243,7 +247,7 @@ export const ManualShaftTab: React.FC<ManualShaftTabProps> = ({
               className="ths-slider w-full relative z-10 text-cyan-400"
             />
           </div>
-          <div className="grid grid-cols-3 gap-1 text-[11px]">
+          <div className="grid grid-cols-3 gap-1 text-xs">
             <button
               type="button"
               onClick={() =>
@@ -261,7 +265,7 @@ export const ManualShaftTab: React.FC<ManualShaftTabProps> = ({
               }`}
             >
               <RotateCcw className="w-3 h-3" />
-              <span>REV</span>
+              <span>{t.badges.rev}</span>
             </button>
             <button
               type="button"
@@ -292,7 +296,7 @@ export const ManualShaftTab: React.FC<ManualShaftTabProps> = ({
               }`}
             >
               <RotateCw className="w-3 h-3" />
-              <span>FWD</span>
+              <span>{t.badges.fwd}</span>
             </button>
           </div>
         </div>

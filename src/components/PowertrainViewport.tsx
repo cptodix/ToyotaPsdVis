@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Bell, BellOff, ListOrdered, X } from 'lucide-react';
+import { Bell, BellOff, Check, ChevronDown, Globe, HelpCircle, ListOrdered, X } from 'lucide-react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import {
@@ -8,11 +8,14 @@ import {
   getRotationDirection,
   PSD_CONSTANTS,
 } from '../drivetrain';
+import { LOCALE_OPTIONS } from '../i18n';
+import { useI18n } from '../i18n/I18nContext';
 import { buildPowertrainScene, LabelAnchorRefs } from '../three/buildPowertrainScene';
 import {
   AnimationSpeedMode,
   CameraPresetId,
   COMPONENT_COLORS,
+  IceCombustionMode,
   PowertrainState,
   PsdLogCategory,
   PsdLogEntry,
@@ -35,6 +38,7 @@ interface PowertrainViewportProps {
   onOpenLogModal: () => void;
   logNotifEnabled: boolean;
   onToggleLogNotif: () => void;
+  onOpenHowToModal: () => void;
   activeNotification: PsdLogEntry | null;
   onDismissNotification: () => void;
 }
@@ -88,11 +92,11 @@ const _tagLayout: [
   TagLayoutItem,
   TagLayoutItem,
 ] = [
-  { rawX: 0, rawY: 0, x: 0, y: 0, w: 186, h: 74, visible: false },
-  { rawX: 0, rawY: 0, x: 0, y: 0, w: 184, h: 64, visible: false },
-  { rawX: 0, rawY: 0, x: 0, y: 0, w: 174, h: 58, visible: false },
-  { rawX: 0, rawY: 0, x: 0, y: 0, w: 174, h: 58, visible: false },
-  { rawX: 0, rawY: 0, x: 0, y: 0, w: 176, h: 68, visible: false },
+  { rawX: 0, rawY: 0, x: 0, y: 0, w: 202, h: 80, visible: false },
+  { rawX: 0, rawY: 0, x: 0, y: 0, w: 200, h: 68, visible: false },
+  { rawX: 0, rawY: 0, x: 0, y: 0, w: 188, h: 62, visible: false },
+  { rawX: 0, rawY: 0, x: 0, y: 0, w: 188, h: 62, visible: false },
+  { rawX: 0, rawY: 0, x: 0, y: 0, w: 190, h: 72, visible: false },
 ];
 
 export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
@@ -109,13 +113,39 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
   onOpenLogModal,
   logNotifEnabled,
   onToggleLogNotif,
+  onOpenHowToModal,
   activeNotification,
   onDismissNotification,
 }) => {
+  const { locale, setLocale, t } = useI18n();
+  const tRef = useRef(t);
+  tRef.current = t;
+
+  const [langMenuOpen, setLangMenuOpen] = useState(false);
+  const langMenuRef = useRef<HTMLDivElement | null>(null);
+
   const canvasMountRef = useRef<HTMLDivElement | null>(null);
   const topBarRef = useRef<HTMLDivElement | null>(null);
   const insertRef = useRef<HTMLElement | null>(null);
   const [webglError, setWebglError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!langMenuOpen) return;
+    const handlePointerDown = (e: MouseEvent) => {
+      if (langMenuRef.current && !langMenuRef.current.contains(e.target as Node)) {
+        setLangMenuOpen(false);
+      }
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setLangMenuOpen(false);
+    };
+    window.addEventListener('mousedown', handlePointerDown);
+    window.addEventListener('keydown', handleKey);
+    return () => {
+      window.removeEventListener('mousedown', handlePointerDown);
+      window.removeEventListener('keydown', handleKey);
+    };
+  }, [langMenuOpen]);
 
   const tickCallbackRef = useRef(onTickSimulation);
   tickCallbackRef.current = onTickSimulation;
@@ -449,12 +479,14 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
     function formatArrowBadge(rpm: number): string {
       const dir = getRotationDirection(rpm);
       const glyph = dir === RotationDir.CW ? '↻' : dir === RotationDir.CCW ? '↺' : '■';
+      if (dir === RotationDir.STOP) return `${glyph} ${tRef.current.badges.stop}`;
       return `${glyph} ${formatDirectionLabel(rpm, false)}`;
     }
 
     function updateDomCallouts(anchors: LabelAnchorRefs, st: PowertrainState) {
       const w = container?.clientWidth || window.innerWidth;
       const h = container?.clientHeight || window.innerHeight;
+      const tb = tRef.current.badges;
 
       projectAnchor(anchors.ice, _tagLayout[0], w, h, 54, 0);
       projectAnchor(anchors.battery, _tagLayout[1], w, h, -28, 0);
@@ -483,7 +515,10 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
         iceDirRef.current.textContent = formatArrowBadge(st.iceRpm);
       }
       if (iceStatusRef.current) {
-        iceStatusRef.current.textContent = iceStatus.badgeText;
+        iceStatusRef.current.textContent =
+          iceStatus.mode === IceCombustionMode.PRODUCING_POWER
+            ? `${tb.iceFiringPrefix} · +${st.flows.iceToCarrierKw.toFixed(1)} kW`
+            : tb.iceStatus[iceStatus.mode];
         iceStatusRef.current.className =
           iceStatus.badgeTone === 'power'
             ? 'text-orange-300 font-semibold'
@@ -509,7 +544,7 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
       // 2. HV Battery · PCU
       const socRounded = Math.round(st.socPercent);
       if (battSocRef.current) {
-        battSocRef.current.textContent = `SoC ${socRounded}%`;
+        battSocRef.current.textContent = `${tb.socLabel} ${socRounded}%`;
       }
       if (battBarRef.current) {
         battBarRef.current.style.width = `${Math.max(4, Math.min(100, socRounded))}%`;
@@ -517,13 +552,13 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
       if (battStatusRef.current) {
         const battKw = st.flows.batteryToPcuKw;
         if (battKw < -0.35) {
-          battStatusRef.current.textContent = `▲ CHG +${Math.abs(battKw).toFixed(1)} kW`;
+          battStatusRef.current.textContent = `${tb.chgPrefix} +${Math.abs(battKw).toFixed(1)} kW`;
           battStatusRef.current.className = 'text-emerald-300 font-semibold';
         } else if (battKw > 0.35) {
-          battStatusRef.current.textContent = `▼ DIS -${battKw.toFixed(1)} kW`;
+          battStatusRef.current.textContent = `${tb.disPrefix} -${battKw.toFixed(1)} kW`;
           battStatusRef.current.className = 'text-amber-300 font-semibold';
         } else {
-          battStatusRef.current.textContent = '■ STANDBY';
+          battStatusRef.current.textContent = tb.standby;
           battStatusRef.current.className = 'text-slate-400';
         }
       }
@@ -563,7 +598,7 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
             ? '↻ CW'
             : wheelDir === RotationDir.CCW
               ? '↺ CCW'
-              : '■ STOP';
+              : `■ ${tb.stop}`;
       }
       if (wheelKmhRef.current) {
         wheelKmhRef.current.textContent = `${Math.abs(Math.round(st.speedKmh))} km/h`;
@@ -571,10 +606,10 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
       if (wheelTravelRef.current) {
         wheelTravelRef.current.textContent =
           wheelDir === RotationDir.CW
-            ? 'FWD'
+            ? tb.fwd
             : wheelDir === RotationDir.CCW
-              ? 'REV'
-              : 'STOP';
+              ? tb.rev
+              : tb.stop;
       }
     }
 
@@ -673,13 +708,13 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
       {/* Top-Left HUD Stack: Title + 5-Component Legend + PSD Log & Notif + Notification Toast */}
       <div
         ref={topBarRef}
-        className="pointer-events-none absolute top-2.5 left-3.5 z-10 flex flex-col items-start gap-1.5 w-fit max-w-[calc(100vw-246px)]"
+        className="pointer-events-none absolute top-2.5 left-3.5 z-10 flex flex-col items-start gap-1.5 w-fit max-w-[calc(100vw-262px)]"
       >
-        {/* Row 1: Title + Color Key + PSD Log Modal Trigger + Notification Toggle */}
+        {/* Row 1: Title + Color Key + PSD Log Modal + Notif + Language Select + How To? */}
         <div className="flex flex-wrap items-center gap-1.5 max-w-full">
-          <div className="inline-flex w-fit max-w-full flex-wrap items-center gap-x-2.5 gap-y-1 px-2.5 py-1 rounded-lg bg-slate-950/72 border border-slate-800/80 text-[11px] text-slate-300">
-            <span className="font-display font-bold text-xs text-slate-100 whitespace-nowrap">
-              Toyota eCVT PSD
+          <div className="inline-flex w-fit max-w-full flex-wrap items-center gap-x-2.5 gap-y-1 px-2.5 py-1 rounded-lg bg-slate-950/72 border border-slate-800/80 text-xs text-slate-300">
+            <span className="font-display font-bold text-[13px] text-slate-100 whitespace-nowrap">
+              {t.hud.title}
             </span>
             <span className="text-slate-600 hidden sm:inline">·</span>
             <span className="inline-flex items-center gap-1 whitespace-nowrap">
@@ -687,7 +722,7 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
                 className="w-2 h-2 rounded-xs"
                 style={{ backgroundColor: COMPONENT_COLORS.ice.hex }}
               />
-              <span>ICE + Carrier &amp; Planets</span>
+              <span>{t.hud.iceLegend}</span>
             </span>
             <span className="text-slate-600">·</span>
             <span className="inline-flex items-center gap-1 whitespace-nowrap">
@@ -695,7 +730,7 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
                 className="w-2 h-2 rounded-xs"
                 style={{ backgroundColor: COMPONENT_COLORS.mg1.hex }}
               />
-              <span>MG1 + Sun</span>
+              <span>{t.hud.mg1Legend}</span>
             </span>
             <span className="text-slate-600">·</span>
             <span className="inline-flex items-center gap-1 whitespace-nowrap">
@@ -703,7 +738,7 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
                 className="w-2 h-2 rounded-xs"
                 style={{ backgroundColor: COMPONENT_COLORS.mg2.hex }}
               />
-              <span>MG2 + Ring &amp; Gears</span>
+              <span>{t.hud.mg2Legend}</span>
             </span>
             <span className="text-slate-600">·</span>
             <span className="inline-flex items-center gap-1 whitespace-nowrap">
@@ -711,7 +746,7 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
                 className="w-2 h-2 rounded-xs"
                 style={{ backgroundColor: COMPONENT_COLORS.wheel.hex }}
               />
-              <span>Wheel + Tire</span>
+              <span>{t.hud.wheelLegend}</span>
             </span>
             <span className="text-slate-600">·</span>
             <span className="inline-flex items-center gap-1 whitespace-nowrap">
@@ -719,31 +754,27 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
                 className="w-2 h-2 rounded-xs"
                 style={{ backgroundColor: COMPONENT_COLORS.battery.hex }}
               />
-              <span>HV Batt + PCU</span>
+              <span>{t.hud.battLegend}</span>
             </span>
           </div>
 
-          <div className="pointer-events-auto inline-flex items-center gap-1">
+          <div className="pointer-events-auto inline-flex flex-wrap items-center gap-1">
             <button
               type="button"
               onClick={onOpenLogModal}
-              title="Open PSD Event & Explanation Log"
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-950/82 border border-slate-700/75 text-[11px] font-medium text-slate-200 hover:text-white hover:border-slate-500 transition-colors whitespace-nowrap"
+              title={t.hud.psdLogTitle}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-950/82 border border-slate-700/75 text-xs font-medium text-slate-200 hover:text-white hover:border-slate-500 transition-colors whitespace-nowrap"
             >
               <ListOrdered className="w-3.5 h-3.5 text-cyan-400" />
-              <span>PSD Log</span>
+              <span>{t.hud.psdLog}</span>
             </button>
 
             <button
               type="button"
               onClick={onToggleLogNotif}
               aria-pressed={logNotifEnabled}
-              title={
-                logNotifEnabled
-                  ? 'Live PSD Transition Notifications ON (click to turn OFF)'
-                  : 'Live PSD Transition Notifications OFF (click to turn ON)'
-              }
-              className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] font-medium transition-colors whitespace-nowrap ${
+              title={logNotifEnabled ? t.hud.notifOnTitle : t.hud.notifOffTitle}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-xs font-medium transition-colors whitespace-nowrap ${
                 logNotifEnabled
                   ? 'bg-cyan-500/20 border-cyan-400/60 text-cyan-200 hover:bg-cyan-500/30'
                   : 'bg-slate-950/75 border-slate-700/65 text-slate-400 hover:text-white'
@@ -754,20 +785,90 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
               ) : (
                 <BellOff className="w-3.5 h-3.5" />
               )}
-              <span>{logNotifEnabled ? 'Notif On' : 'Notif Off'}</span>
+              <span>{logNotifEnabled ? t.hud.notifOn : t.hud.notifOff}</span>
+            </button>
+
+            {/* Button 1 beside Notif: Language Selector (Default strictly English) */}
+            <div ref={langMenuRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setLangMenuOpen((prev) => !prev)}
+                aria-expanded={langMenuOpen}
+                aria-haspopup="menu"
+                title={t.hud.languageTitle}
+                className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-medium transition-colors whitespace-nowrap ${
+                  langMenuOpen
+                    ? 'bg-slate-800 border-slate-500 text-white'
+                    : 'bg-slate-950/82 border-slate-700/75 text-slate-200 hover:text-white hover:border-slate-500'
+                }`}
+              >
+                <Globe className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="font-mono font-semibold">
+                  {LOCALE_OPTIONS.find((opt) => opt.id === locale)?.shortLabel ?? 'EN'}
+                </span>
+                <ChevronDown className="w-3 h-3 text-slate-400" />
+              </button>
+
+              {langMenuOpen && (
+                <div
+                  role="menu"
+                  aria-label={t.hud.languageTitle}
+                  className="absolute left-0 top-full mt-1 min-w-[168px] py-1 rounded-lg bg-[#0c1220] border border-slate-700/85 shadow-2xl z-40"
+                >
+                  {LOCALE_OPTIONS.map((opt) => {
+                    const selected = opt.id === locale;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={selected}
+                        onClick={() => {
+                          setLocale(opt.id);
+                          setLangMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between gap-2 px-3 py-1.5 text-xs transition-colors text-left ${
+                          selected
+                            ? 'bg-cyan-500/20 text-cyan-200 font-semibold'
+                            : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                        }`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span className="font-mono text-[11px] text-slate-400 w-5">
+                            {opt.shortLabel}
+                          </span>
+                          <span>{opt.nativeName}</span>
+                        </span>
+                        {selected && <Check className="w-3.5 h-3.5 text-cyan-300 shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Button 2 beside Notif: How To? Guide & THS V Manual */}
+            <button
+              type="button"
+              onClick={onOpenHowToModal}
+              title={t.hud.howToTitle}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-950/82 border border-slate-700/75 text-xs font-medium text-slate-200 hover:text-white hover:border-amber-400/60 transition-colors whitespace-nowrap"
+            >
+              <HelpCircle className="w-3.5 h-3.5 text-amber-300" />
+              <span>{t.hud.howTo}</span>
             </button>
           </div>
         </div>
 
         {/* Row 2: Live Transition Notification Banner under Top Legend */}
         {logNotifEnabled && activeNotification && (
-          <div className="pointer-events-auto max-w-[600px] px-2.5 py-1.5 rounded-lg bg-slate-950/90 border border-cyan-500/50 shadow-lg text-[11px] space-y-0.5">
+          <div className="pointer-events-auto max-w-[620px] px-2.5 py-1.5 rounded-lg bg-slate-950/90 border border-cyan-500/50 shadow-lg text-xs space-y-0.5">
             <div className="flex items-center justify-between gap-2">
               <div className="flex flex-wrap items-center gap-1">
                 {activeNotification.categories.map((cat) => (
                   <span
                     key={cat}
-                    className={`px-1 py-0.2 rounded border font-mono text-[9.5px] font-bold ${NOTIF_CAT_BADGE[cat]}`}
+                    className={`px-1 py-0.2 rounded border font-mono text-[10.5px] font-bold ${NOTIF_CAT_BADGE[cat]}`}
                   >
                     {cat}
                   </span>
@@ -775,7 +876,7 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
                 <strong className="text-slate-100 font-semibold">
                   {activeNotification.title}
                 </strong>
-                <span className="font-mono text-[10px] text-violet-300">
+                <span className="font-mono text-[11px] text-violet-300">
                   · {Math.abs(activeNotification.speedKmh)} km/h
                 </span>
               </div>
@@ -785,10 +886,10 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
                 aria-label="Dismiss notification"
                 className="p-0.5 text-slate-400 hover:text-white shrink-0"
               >
-                <X className="w-3 h-3" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
-            <p className="text-slate-300 text-[10.5px] leading-snug">
+            <p className="text-slate-300 text-[11.5px] leading-snug">
               {activeNotification.explanation}
             </p>
           </div>
@@ -841,21 +942,21 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
         {/* 1. ICE · Carrier & Planets */}
         <div
           ref={iceTagRef}
-          className="absolute top-0 left-0 w-[184px] px-2.5 py-1 rounded-lg bg-slate-950/74 border border-red-500/45 shadow-md"
+          className="absolute top-0 left-0 w-[198px] px-2.5 py-1 rounded-lg bg-slate-950/74 border border-red-500/45 shadow-md"
         >
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-red-400 whitespace-nowrap">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-red-400 whitespace-nowrap">
             <span className="inline-block w-2 h-2 rounded-xs bg-red-500" />
-            <span>ICE · Carrier &amp; Planets</span>
+            <span>{t.badges.iceTitle}</span>
           </div>
-          <div className="flex items-center justify-between mt-0.5 text-[11.5px] font-mono text-slate-100 whitespace-nowrap">
+          <div className="flex items-center justify-between mt-0.5 text-[12.5px] font-mono text-slate-100 whitespace-nowrap">
             <span ref={iceValRef}>0 RPM</span>
             <span ref={iceDirRef} className="text-red-300">
-              ■ STOP
+              ■ {t.badges.stop}
             </span>
           </div>
-          <div className="flex items-center justify-between mt-0.5 text-[10.5px] font-mono whitespace-nowrap">
+          <div className="flex items-center justify-between mt-0.5 text-[11.5px] font-mono whitespace-nowrap">
             <span ref={iceStatusRef} className="text-slate-400">
-              ■ OFF · STANDBY
+              {t.badges.iceStatus[IceCombustionMode.STOPPED]}
             </span>
           </div>
           <div className="mt-1 h-1 w-full rounded-full bg-slate-800 overflow-hidden">
@@ -870,20 +971,20 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
         {/* 2. HV Battery · PCU */}
         <div
           ref={battTagRef}
-          className="absolute top-0 left-0 w-[182px] px-2.5 py-1 rounded-lg bg-slate-950/74 border border-emerald-500/50 shadow-md"
+          className="absolute top-0 left-0 w-[196px] px-2.5 py-1 rounded-lg bg-slate-950/74 border border-emerald-500/50 shadow-md"
         >
-          <div className="flex items-center justify-between gap-1 text-[11px] font-semibold text-emerald-400 whitespace-nowrap">
+          <div className="flex items-center justify-between gap-1 text-xs font-semibold text-emerald-400 whitespace-nowrap">
             <span className="inline-flex items-center gap-1.5">
               <span className="inline-block w-2 h-2 rounded-xs bg-emerald-500" />
-              <span>HV Battery · PCU</span>
+              <span>{t.badges.battTitle}</span>
             </span>
             <span ref={battSocRef} className="font-mono text-emerald-200">
-              SoC 60%
+              {t.badges.socLabel} 60%
             </span>
           </div>
-          <div className="flex items-center justify-between mt-0.5 text-[11px] font-mono whitespace-nowrap">
+          <div className="flex items-center justify-between mt-0.5 text-xs font-mono whitespace-nowrap">
             <span ref={battStatusRef} className="text-slate-300">
-              ■ STANDBY
+              {t.badges.standby}
             </span>
           </div>
           <div className="mt-1 h-1 w-full rounded-full bg-slate-800 overflow-hidden">
@@ -898,16 +999,16 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
         {/* 3. MG1 · Sun Gear */}
         <div
           ref={mg1TagRef}
-          className="absolute top-0 left-0 w-[172px] px-2.5 py-1 rounded-lg bg-slate-950/74 border border-amber-500/45 shadow-md"
+          className="absolute top-0 left-0 w-[186px] px-2.5 py-1 rounded-lg bg-slate-950/74 border border-amber-500/45 shadow-md"
         >
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-400 whitespace-nowrap">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-400 whitespace-nowrap">
             <span className="inline-block w-2 h-2 rounded-xs bg-amber-500" />
-            <span>MG1 · Sun Gear</span>
+            <span>{t.badges.mg1Title}</span>
           </div>
-          <div className="flex items-center justify-between mt-0.5 text-[11.5px] font-mono text-slate-100 whitespace-nowrap">
+          <div className="flex items-center justify-between mt-0.5 text-[12.5px] font-mono text-slate-100 whitespace-nowrap">
             <span ref={mg1ValRef}>0 RPM</span>
             <span ref={mg1DirRef} className="text-amber-300">
-              ■ STOP
+              ■ {t.badges.stop}
             </span>
           </div>
           <div className="mt-1 h-1 w-full rounded-full bg-slate-800 overflow-hidden">
@@ -922,16 +1023,16 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
         {/* 4. MG2 · Ring & Counter */}
         <div
           ref={mg2TagRef}
-          className="absolute top-0 left-0 w-[172px] px-2.5 py-1 rounded-lg bg-slate-950/74 border border-cyan-500/45 shadow-md"
+          className="absolute top-0 left-0 w-[186px] px-2.5 py-1 rounded-lg bg-slate-950/74 border border-cyan-500/45 shadow-md"
         >
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-cyan-400 whitespace-nowrap">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-cyan-400 whitespace-nowrap">
             <span className="inline-block w-2 h-2 rounded-xs bg-cyan-500" />
-            <span>MG2 · Ring &amp; Gears</span>
+            <span>{t.badges.mg2Title}</span>
           </div>
-          <div className="flex items-center justify-between mt-0.5 text-[11.5px] font-mono text-slate-100 whitespace-nowrap">
+          <div className="flex items-center justify-between mt-0.5 text-[12.5px] font-mono text-slate-100 whitespace-nowrap">
             <span ref={mg2ValRef}>0 RPM</span>
             <span ref={mg2DirRef} className="text-cyan-300">
-              ■ STOP
+              ■ {t.badges.stop}
             </span>
           </div>
           <div className="mt-1 h-1 w-full rounded-full bg-slate-800 overflow-hidden">
@@ -946,22 +1047,22 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
         {/* 5. Drive Wheel · Final Axle */}
         <div
           ref={wheelTagRef}
-          className="absolute top-0 left-0 w-[174px] px-2.5 py-1 rounded-lg bg-slate-950/74 border border-violet-500/45 shadow-md"
+          className="absolute top-0 left-0 w-[188px] px-2.5 py-1 rounded-lg bg-slate-950/74 border border-violet-500/45 shadow-md"
         >
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-violet-400 whitespace-nowrap">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-violet-400 whitespace-nowrap">
             <span className="inline-block w-2 h-2 rounded-xs bg-violet-500" />
-            <span>Wheel · Final Axle</span>
+            <span>{t.badges.wheelTitle}</span>
           </div>
-          <div className="flex items-center justify-between mt-0.5 text-[11.5px] font-mono text-slate-100 whitespace-nowrap">
+          <div className="flex items-center justify-between mt-0.5 text-[12.5px] font-mono text-slate-100 whitespace-nowrap">
             <span ref={wheelRpmRef}>0 RPM</span>
             <span ref={wheelTurnRef} className="text-violet-300">
-              ■ STOP
+              ■ {t.badges.stop}
             </span>
           </div>
-          <div className="flex items-center justify-between text-[11.5px] font-mono text-violet-200 whitespace-nowrap">
+          <div className="flex items-center justify-between text-[12.5px] font-mono text-violet-200 whitespace-nowrap">
             <span ref={wheelKmhRef}>0 km/h</span>
             <span ref={wheelTravelRef} className="font-semibold text-violet-300">
-              STOP
+              {t.badges.stop}
             </span>
           </div>
         </div>

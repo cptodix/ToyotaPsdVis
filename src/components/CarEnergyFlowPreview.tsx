@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useI18n } from '../i18n/I18nContext';
 import {
   AutoDriveEventKind,
   AutoDriveMode,
@@ -90,6 +91,7 @@ export const CarEnergyFlowPreview: React.FC<CarEnergyFlowPreviewProps> = ({
   timeScale = 1,
   className = '',
 }) => {
+  const { t } = useI18n();
   const [animState, setAnimState] = useState({ phase: 0, wheelAngle: 0, roadShift: 0 });
 
   useEffect(() => {
@@ -157,10 +159,10 @@ export const CarEnergyFlowPreview: React.FC<CarEnergyFlowPreviewProps> = ({
     <div
       className={`flex flex-col justify-between px-1 min-[760px]:px-1.5 py-1 rounded-lg bg-slate-900/45 border border-slate-700/45 w-full h-full min-w-0 overflow-hidden ${className}`}
     >
-      <div className="flex items-center justify-between text-[8px] min-[760px]:text-[9px] min-[960px]:text-[10px] text-slate-300 leading-none min-w-0">
+      <div className="flex items-center justify-between text-[9px] min-[760px]:text-[10px] min-[960px]:text-[11px] text-slate-300 leading-none min-w-0">
         <span className="font-medium text-slate-300 whitespace-nowrap">
-          <span className="min-[920px]:hidden">Inc </span>
-          <span className="hidden min-[920px]:inline">Incline </span>
+          <span className="min-[920px]:hidden">{t.driveTab.incShort} </span>
+          <span className="hidden min-[920px]:inline">{t.driveTab.incline} </span>
           <span
             className={`font-mono tabular-nums font-semibold ${
               grade > 0 ? 'text-amber-300' : grade < 0 ? 'text-cyan-300' : 'text-slate-400'
@@ -170,7 +172,7 @@ export const CarEnergyFlowPreview: React.FC<CarEnergyFlowPreviewProps> = ({
           </span>
         </span>
         <span className="font-mono tabular-nums font-semibold text-emerald-400 shrink-0 ml-0.5 whitespace-nowrap">
-          SoC {Math.round(state.socPercent)}%
+          {t.badges.socLabel} {Math.round(state.socPercent)}%
         </span>
       </div>
 
@@ -327,7 +329,7 @@ export const CarEnergyFlowPreview: React.FC<CarEnergyFlowPreviewProps> = ({
                 stroke={COMPONENT_COLORS.ice.hex}
                 strokeWidth="1.6"
               />
-              <text y="3" textAnchor="middle" className="fill-red-300 text-[8.5px] font-bold">
+              <text y="3.2" textAnchor="middle" className="fill-red-300 text-[9.5px] font-bold">
                 ICE
               </text>
             </g>
@@ -353,7 +355,7 @@ export const CarEnergyFlowPreview: React.FC<CarEnergyFlowPreviewProps> = ({
                 fill={COMPONENT_COLORS.battery.hex}
                 fillOpacity="0.34"
               />
-              <text y="3" textAnchor="middle" className="fill-emerald-300 text-[8.5px] font-bold">
+              <text y="3.2" textAnchor="middle" className="fill-emerald-300 text-[9.5px] font-bold">
                 BATT
               </text>
             </g>
@@ -367,7 +369,7 @@ export const CarEnergyFlowPreview: React.FC<CarEnergyFlowPreviewProps> = ({
             <text
               x={nWheel.x + 15}
               y={nWheel.y + 7.5}
-              className="fill-violet-300 text-[7px] font-bold tracking-tight"
+              className="fill-violet-300 text-[8px] font-bold tracking-tight"
             >
               WHEEL
             </text>

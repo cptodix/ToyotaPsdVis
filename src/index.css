@@ -3,13 +3,14 @@
 
 @layer base {
   :root {
-    --font-display: 'Outfit', sans-serif;
-    --font-sans: 'Plus Jakarta Sans', sans-serif;
-    --font-mono: 'JetBrains Mono', monospace;
+    --font-display: 'IBM Plex Sans', sans-serif;
+    --font-sans: 'IBM Plex Sans', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
   }
 
   body {
     font-family: var(--font-sans);
+    font-size: 13px;
     background-color: #090d16;
     color: #f1f5f9;
   }

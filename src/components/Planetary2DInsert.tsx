@@ -1,6 +1,7 @@
 import React, { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { getRotationDirection, PSD_CONSTANTS } from '../drivetrain';
+import { useI18n } from '../i18n/I18nContext';
 import { COMPONENT_COLORS, PowertrainState, RotationDir } from '../types/hybrid';
 
 interface Planetary2DInsertProps {
@@ -162,6 +163,7 @@ function formatShortDir(rpm: number): string {
 
 export const Planetary2DInsert = forwardRef<HTMLElement, Planetary2DInsertProps>(
   function Planetary2DInsert({ stateRef, state, timeScale = 1 }, ref) {
+    const { t } = useI18n();
     const [minimized, setMinimized] = useState(false);
     const timeScaleRef = useRef(timeScale);
     timeScaleRef.current = timeScale;
@@ -238,12 +240,12 @@ export const Planetary2DInsert = forwardRef<HTMLElement, Planetary2DInsertProps>
     return (
       <aside
         ref={ref}
-        aria-label="2D Planetary Gear Speed and Direction Insert"
-        className="pointer-events-auto absolute top-3 right-3.5 z-20 w-[214px] rounded-xl bg-slate-950/78 border border-slate-700/65 shadow-xl text-slate-200 select-none"
+        aria-label={t.planetary2d.title}
+        className="pointer-events-auto absolute top-3 right-3.5 z-20 w-[230px] rounded-xl bg-slate-950/78 border border-slate-700/65 shadow-xl text-slate-200 select-none"
       >
         <div className="flex items-center justify-between px-2.5 py-1 border-b border-slate-800/80">
-          <span className="font-display font-bold text-xs text-slate-100 tracking-tight whitespace-nowrap">
-            2D Planetary Gear
+          <span className="font-display font-bold text-[13px] text-slate-100 tracking-tight whitespace-nowrap">
+            {t.planetary2d.title}
           </span>
           <button
             type="button"
@@ -390,14 +392,14 @@ export const Planetary2DInsert = forwardRef<HTMLElement, Planetary2DInsertProps>
             </div>
 
             {/* Compact Color-Coded RPM & Connection Legend */}
-            <div className="space-y-0.5 text-[10.5px]">
+            <div className="space-y-0.5 text-[11.5px]">
               <div className="flex items-center justify-between gap-1 px-1.5 py-0.5 rounded bg-slate-900/65 border border-amber-500/30">
                 <span className="inline-flex items-center gap-1 font-semibold text-amber-300 whitespace-nowrap">
                   <span
                     className="w-2 h-2 rounded-xs shrink-0"
                     style={{ backgroundColor: COMPONENT_COLORS.mg1.hex }}
                   />
-                  <span>Sun→MG1</span>
+                  <span>{t.planetary2d.sunToMg1}</span>
                 </span>
                 <span className="font-mono whitespace-nowrap">
                   <span className="text-amber-200">{formatShortDir(state.mg1Rpm)}</span>{' '}
@@ -413,7 +415,7 @@ export const Planetary2DInsert = forwardRef<HTMLElement, Planetary2DInsertProps>
                     className="w-2 h-2 rounded-xs shrink-0"
                     style={{ backgroundColor: COMPONENT_COLORS.ice.hex }}
                   />
-                  <span>Carrier→ICE</span>
+                  <span>{t.planetary2d.carrierToIce}</span>
                 </span>
                 <span className="font-mono whitespace-nowrap">
                   <span className="text-red-200">{formatShortDir(state.iceRpm)}</span>{' '}
@@ -426,7 +428,7 @@ export const Planetary2DInsert = forwardRef<HTMLElement, Planetary2DInsertProps>
               <div className="flex items-center justify-between gap-1 px-1.5 py-0.5 rounded bg-slate-900/65 border border-red-400/25">
                 <span className="inline-flex items-center gap-1 font-medium text-red-200 whitespace-nowrap">
                   <span className="w-2 h-2 rounded-xs shrink-0 bg-red-400" />
-                  <span>Planets (Pin)</span>
+                  <span>{t.planetary2d.planetsPin}</span>
                 </span>
                 <span className="font-mono whitespace-nowrap">
                   <span className="text-red-200">{formatShortDir(state.planetLocalRpm)}</span>{' '}
@@ -442,7 +444,7 @@ export const Planetary2DInsert = forwardRef<HTMLElement, Planetary2DInsertProps>
                     className="w-2 h-2 rounded-xs shrink-0"
                     style={{ backgroundColor: COMPONENT_COLORS.mg2.hex }}
                   />
-                  <span>Ring→MG2/Whl</span>
+                  <span>{t.planetary2d.ringToMg2Wheel}</span>
                 </span>
                 <span className="font-mono whitespace-nowrap">
                   <span className="text-cyan-200">{formatShortDir(state.ringRpm)}</span>{' '}

@@ -1,10 +1,13 @@
+import { useState } from 'react';
 import { BottomControlDock } from './components/BottomControlDock';
+import { HowToModal } from './components/HowToModal';
 import { PowertrainViewport } from './components/PowertrainViewport';
 import { PsdLogModal } from './components/PsdLogModal';
 import { useHybridSimulation } from './engine';
 
 export default function App() {
   const sim = useHybridSimulation();
+  const [howToOpen, setHowToOpen] = useState(false);
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-[#090d16] text-slate-100">
@@ -23,6 +26,7 @@ export default function App() {
           onOpenLogModal={() => sim.setLogModalOpen(true)}
           logNotifEnabled={sim.logNotifEnabled}
           onToggleLogNotif={sim.handleToggleLogNotif}
+          onOpenHowToModal={() => setHowToOpen(true)}
           activeNotification={sim.activeNotification}
           onDismissNotification={sim.handleDismissNotification}
         />
@@ -67,6 +71,8 @@ export default function App() {
         onClose={() => sim.setLogModalOpen(false)}
         onClear={sim.handleClearLogs}
       />
+
+      <HowToModal open={howToOpen} onClose={() => setHowToOpen(false)} />
     </div>
   );
 }
