@@ -15,8 +15,6 @@ export const es: TranslationDictionary = {
     notifOff: 'Notif Off',
     notifOnTitle: 'Notificaciones en vivo del PSD activadas (clic para desactivar)',
     notifOffTitle: 'Notificaciones en vivo del PSD desactivadas (clic para activar)',
-    howTo: '¿Guía?',
-    howToTitle: 'Abrir Guía del Simulador y Referencia Toyota Hybrid (THS V)',
     languageTitle: 'Seleccionar idioma de la interfaz',
   },
   badges: {
@@ -192,62 +190,5 @@ export const es: TranslationDictionary = {
       'Sin eventos PSD aún. Conduce, cambia de marcha o mueve los controles manuales para registrar transiciones.',
     whyPrefix: 'Motivo: ',
     battLabel: 'Bat',
-  },
-  howToModal: {
-    title: 'Guía del Simulador y Sistema Toyota Hybrid (THS V)',
-    subtitle:
-      'Manual interactivo y explicación técnica de la transmisión eCVT del Toyota Kijang Innova Zenix Hybrid (AG10)',
-    tabControls: 'Cómo Usar',
-    tabDrivetrain: 'Cómo Funciona THS V',
-    controlsIntro:
-      'Explora el sistema Toyota Hybrid de 5.ª generación en tiempo real conduciendo manualmente, activando escenarios realistas de AutoDrive o manipulando el engranaje planetario.',
-    drivetrainIntro:
-      'En lugar de correas o embragues escalonados, el eCVT de Toyota utiliza un único conjunto planetario (Power Split Device / PSD) que conecta permanentemente el motor y dos motores-generadores.',
-    controlsCards: [
-      {
-        badge: 'VISOR 3D',
-        title: 'Orbitar, Zoom, Vistas y Despiece (Separar)',
-        body: 'Arrastra en la escena 3D para orbitar, botón derecho para desplazar y rueda para zoom. Usa Todo / PSD / MG1/2 / Rueda para enfocar cada conjunto y ajusta Separar (0–100%) para abrir el transeje sin perder el engrane.',
-      },
-      {
-        badge: 'PESTAÑA CONDUCIR',
-        title: 'AutoDrive, EV Mode y Pedales Manuales',
-        body: 'Selecciona P / R / N / D / B, activa EV Mode (<= 42 km/h con SoC >= 40%), o elige AutoDrive (Ciudad / Autop. / Mont.) para tráfico y pendientes realistas. Mover Acelerador, Freno o Pendiente devuelve el control manual al instante.',
-      },
-      {
-        badge: 'MODOS Y MANUAL',
-        title: '10 Modos Auditados y Solucionador Willis',
-        body: 'En Modos salta directo a cualquier estado oficial del THS V (desde Carga Park hasta Power Boost de 186 PS o descenso en rango B). En Manual bloquea un eje y ajusta ICE (solo CW), MG1 (CW/CCW) o MG2/Rueda directamente.',
-      },
-      {
-        badge: 'INSPECCIÓN',
-        title: 'Velocidad, Auto Slow-Mo, PSD Log y Audio',
-        body: 'Alterna animación mecánica Normal vs Realista (las flechas de flujo mantienen velocidad constante), activa Auto Slow-Mo a 0.5x en transiciones, revisa las 100 entradas del PSD Log y activa el sonido sintetizado M20A-FXS + neumático + inversor EV.',
-      },
-    ],
-    drivetrainCards: [
-      {
-        badge: 'CINEMÁTICA PSD',
-        title: 'Power Split Device y eCVT sin Embrague',
-        body: 'El motor 2.0L M20A-FXS impulsa el Portasatélites (4×24T), MG1 se conecta al Solar (30T) y MG2 + ruedas se acoplan vía contraeje a la Corona (78T). Regular las RPM del MG1 varía continuamente la relación entre motor y ruedas.',
-      },
-      {
-        badge: 'REPARTO DE PAR',
-        title: '72.2% Mecánico / 27.8% Eléctrico y Overdrive',
-        body: 'Las fuerzas de reacción en el portasatélites envían permanentemente el 72.2% (78/108) del par del ICE directo a las ruedas y el 27.8% (30/108) al MG1. Por encima de ~78 km/h, MG1 cruza cero y gira CCW como motor inverso para un crucero eficiente.',
-      },
-      {
-        badge: 'COMBUSTIÓN vs BOMBA',
-        title: 'Combustión Activa vs Freno Motor en Rango B',
-        body: 'El cigüeñal ICE solo puede girar CW (>= 0 RPM). Al quemar combustible, el encendido 1-3-4-2 ilumina cada cilindro. En descensos fuertes en B o batería llena, el combustible se corta (0.00 L/h) y MG1 gira el ICE hasta ~4,600 RPM como bomba de aire.',
-      },
-      {
-        badge: 'ZENIX AG10 (2,020 KG)',
-        title: 'Park vs Neutral y Frenado Cooperativo ECB',
-        body: 'Calibrado para un Innova Zenix Hybrid con 4 adultos (186 PS combinados, batería NiMH 1.31 kWh, carga auxiliar A/C + 12V de 0.9 kW). En P, los inversores siguen activos y recargan bajo 40% SoC; en N se desenergizan sin poder cargar. El ECB recupera hasta 32 kW con MG2 antes de sumar frenos hidráulicos.',
-      },
-    ],
-    willisFormulaNote: 'Identidad de Willis (Siempre Válida):  30 · ω_MG1 + 78 · ω_Ring = 108 · ω_ICE',
-    close: 'Entendido',
   },
 };

@@ -20,4 +20,4 @@ export function getTranslations(locale: LocaleId): TranslationDictionary {
 }
 
 export { LOCALE_OPTIONS, LocaleId };
-export type { HowToCardItem, LocaleOption, TranslationDictionary } from './types';
+export type { LocaleOption, TranslationDictionary } from './types';

@@ -22,12 +22,6 @@ export const LOCALE_OPTIONS: readonly LocaleOption[] = [
   { id: LocaleId.ES, shortLabel: 'ES', nativeName: 'Español' },
 ] as const;
 
-export interface HowToCardItem {
-  badge?: string;
-  title: string;
-  body: string;
-}
-
 export interface TranslationDictionary {
   hud: {
     title: string;
@@ -42,8 +36,6 @@ export interface TranslationDictionary {
     notifOff: string;
     notifOnTitle: string;
     notifOffTitle: string;
-    howTo: string;
-    howToTitle: string;
     languageTitle: string;
   };
   badges: {
@@ -143,17 +135,5 @@ export interface TranslationDictionary {
     empty: string;
     whyPrefix: string;
     battLabel: string;
-  };
-  howToModal: {
-    title: string;
-    subtitle: string;
-    tabControls: string;
-    tabDrivetrain: string;
-    controlsIntro: string;
-    drivetrainIntro: string;
-    controlsCards: HowToCardItem[];
-    drivetrainCards: HowToCardItem[];
-    willisFormulaNote: string;
-    close: string;
   };
 }

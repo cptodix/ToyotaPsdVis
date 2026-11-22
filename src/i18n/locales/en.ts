@@ -15,8 +15,6 @@ export const en: TranslationDictionary = {
     notifOff: 'Notif Off',
     notifOnTitle: 'Live PSD Transition Notifications ON (click to turn OFF)',
     notifOffTitle: 'Live PSD Transition Notifications OFF (click to turn ON)',
-    howTo: 'How To?',
-    howToTitle: 'Open Simulator Guide & Toyota Hybrid (THS V) Reference',
     languageTitle: 'Select Interface Language',
   },
   badges: {
@@ -192,62 +190,5 @@ export const en: TranslationDictionary = {
       'No PSD transition events recorded yet. Drive, shift gears, or scrub manual sliders to inspect transitions.',
     whyPrefix: 'Why: ',
     battLabel: 'Batt',
-  },
-  howToModal: {
-    title: 'Simulator Guide & Toyota Hybrid (THS V)',
-    subtitle:
-      'Interactive manual and engineering breakdown of the Toyota Kijang Innova Zenix Hybrid (AG10) eCVT',
-    tabControls: 'How to Use',
-    tabDrivetrain: 'How THS V Works',
-    controlsIntro:
-      'Explore the 5th-generation Toyota Hybrid System in real time by driving manually, triggering realistic traffic scenarios, or isolating planetary gear kinematics.',
-    drivetrainIntro:
-      'Instead of belts, pulleys, or stepped clutches, Toyota’s eCVT uses a single planetary gearset (Power Split Device) permanently linking the engine and two electric motor-generators.',
-    controlsCards: [
-      {
-        badge: '3D VIEWPORT',
-        title: 'Orbit, Zoom, Presets & Exploded Spread',
-        body: 'Drag anywhere in the 3D scene to orbit, right-drag to pan, and scroll to zoom. Use All / PSD / MG1/2 / Wheel presets to focus on individual assemblies, and drag Spread (0–100%) to pull the transaxle apart while keeping gears meshing cleanly.',
-      },
-      {
-        badge: 'DRIVE TAB',
-        title: 'AutoDrive, EV Mode & Manual Pedals',
-        body: 'Shift P / R / N / D / B, toggle dedicated EV Mode (<= 42 km/h when SoC >= 40%), or pick AutoDrive (City / Hwy / Mtn) for smooth randomized traffic & hills. Moving Throttle, Brake, or Incline immediately hands control back to manual driving.',
-      },
-      {
-        badge: 'MODES & MANUAL',
-        title: '10 Preset Modes & Live Willis Shaft Solver',
-        body: 'Switch to Modes to jump straight into any audited THS V state (from Stationary Park Charge to 186 PS Dual Boost or B-Mode Descent). Switch to Manual to lock one shaft and scrub ICE (CW only), MG1 (CW/CCW), or MG2/Wheel RPM directly.',
-      },
-      {
-        badge: 'INSPECTION',
-        title: 'Speed Mode, Auto Slow-Mo, PSD Log & Audio',
-        body: 'Toggle Normal vs Realistic mechanical spin speed (power-flow arrows stay constant), enable Auto Slow-Mo to slow down to 0.5x around transitions, inspect the 100-entry PSD Log or live Notif banners, and enable synthesized M20A-FXS + tire + EV inverter audio.',
-      },
-    ],
-    drivetrainCards: [
-      {
-        badge: 'PSD KINEMATICS',
-        title: 'Power Split Device & Zero-Clutch eCVT',
-        body: 'The 2.0L M20A-FXS engine drives the Planetary Carrier (C, 4×24T planets), MG1 connects to the 30T Sun Gear, and MG2 + final drive wheels connect via countershaft to the 78T Ring Gear. Adjusting MG1 RPM continuously steplessly varies the engine-to-wheel speed ratio without shifting gears.',
-      },
-      {
-        badge: 'TORQUE SPLIT',
-        title: '72.2% Mechanical / 27.8% Electrical & Overdrive',
-        body: 'Reaction forces inside the carrier permanently send 72.2% (78/108) of ICE torque directly to the wheels and 27.8% (30/108) to MG1. Above ~78 km/h cruise, MG1 crosses zero and spins CCW as a reverse motor, recycling slight power from MG2 for relaxed highway overdrive.',
-      },
-      {
-        badge: 'COMBUSTION vs PUMP',
-        title: 'Firing Pistons vs Unfueled B-Range Braking',
-        body: 'An ICE crankshaft can only spin CW (>= 0 RPM). When igniting fuel, 1-3-4-2 cylinder combustion fires each power stroke. On steep B-range descents or high-SoC braking, fuel cuts completely (0.00 L/h) while MG1 spins the unfueled ICE up to ~4,600 RPM as an air pump to shed excess kinetic energy.',
-      },
-      {
-        badge: 'ZENIX AG10 (2,020 KG)',
-        title: 'Park vs Neutral & ECB Cooperative Braking',
-        body: 'Calibrated to a 4-adult Innova Zenix Hybrid (186 PS combined, 1.31 kWh NiMH pack, 0.9 kW READY A/C + 12V load). In Park (P), inverters stay active and recharge SoC below 40%; in Neutral (N), MG1/MG2 inverters de-energize so the pack cannot charge. ECB braking recovers 100% via MG2 up to 32 kW before blending hydraulic discs.',
-      },
-    ],
-    willisFormulaNote: 'Willis Identity (Always Satisfied):  30 · ω_MG1 + 78 · ω_Ring = 108 · ω_ICE',
-    close: 'Got It',
   },
 };

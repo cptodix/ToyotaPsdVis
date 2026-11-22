@@ -1,6 +1,15 @@
-# Toyota eCVT Power Split Device 3D Visualization
-
-Interactive real-time 3D visualization, physics simulator, and engineering reference model of the **5th-Generation Toyota Hybrid System (THS V)** Power Split Device (PSD), calibrated to a **Toyota Kijang Innova Zenix Hybrid (AG10)** carrying **4 adult passengers (2,020 kg laden mass)**.
+<div align="center">
+  <br />
+  <img src="public/assets/aistudio/t_hev_fd009673.svg" alt="Toyota Hybrid eCVT PSD Emblem" width="112" height="112" />
+  <h1>Toyota eCVT Power Split Device 3D Visualization</h1>
+  <p>
+    <strong>5th-Generation Toyota Hybrid System (THS V) · Interactive Physics &amp; Driving Simulator</strong>
+  </p>
+  <p>
+    Calibrated to a <strong>Toyota Kijang Innova Zenix Hybrid (AG10)</strong> with <strong>4 adult passengers (2,020 kg laden mass)</strong>.<br />
+    <sub>Three.js WebGL &nbsp;·&nbsp; React &amp; TypeScript &nbsp;·&nbsp; Exact Willis Kinematics &nbsp;·&nbsp; Multi-Language HUD</sub>
+  </p>
+</div>
 
 ---
 

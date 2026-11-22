@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Bell, BellOff, Check, ChevronDown, Globe, HelpCircle, ListOrdered, X } from 'lucide-react';
+import { Bell, BellOff, Check, ChevronDown, Globe, ListOrdered, X } from 'lucide-react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import {
@@ -38,7 +38,6 @@ interface PowertrainViewportProps {
   onOpenLogModal: () => void;
   logNotifEnabled: boolean;
   onToggleLogNotif: () => void;
-  onOpenHowToModal: () => void;
   activeNotification: PsdLogEntry | null;
   onDismissNotification: () => void;
 }
@@ -113,7 +112,6 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
   onOpenLogModal,
   logNotifEnabled,
   onToggleLogNotif,
-  onOpenHowToModal,
   activeNotification,
   onDismissNotification,
 }) => {
@@ -846,17 +844,6 @@ export const PowertrainViewport: React.FC<PowertrainViewportProps> = ({
                 </div>
               )}
             </div>
-
-            {/* Button 2 beside Notif: How To? Guide & THS V Manual */}
-            <button
-              type="button"
-              onClick={onOpenHowToModal}
-              title={t.hud.howToTitle}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-950/82 border border-slate-700/75 text-xs font-medium text-slate-200 hover:text-white hover:border-amber-400/60 transition-colors whitespace-nowrap"
-            >
-              <HelpCircle className="w-3.5 h-3.5 text-amber-300" />
-              <span>{t.hud.howTo}</span>
-            </button>
           </div>
         </div>
 

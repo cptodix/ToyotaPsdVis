@@ -15,8 +15,6 @@ export const ja: TranslationDictionary = {
     notifOff: '通知 Off',
     notifOnTitle: 'PSD切替ライブ通知 ON（クリックでOFF）',
     notifOffTitle: 'PSD切替ライブ通知 OFF（クリックでON）',
-    howTo: 'ガイド?',
-    howToTitle: 'シミュレーター操作ガイドとトヨタTHS V解説を開く',
     languageTitle: '表示言語を選択',
   },
   badges: {
@@ -192,62 +190,5 @@ export const ja: TranslationDictionary = {
       'PSDイベントはまだ記録されていません。走行やシフト操作、手動スライダー操作で記録されます。',
     whyPrefix: '理由: ',
     battLabel: 'Batt',
-  },
-  howToModal: {
-    title: '操作ガイド＆トヨタ Hybrid (THS V) 解説',
-    subtitle:
-      'Toyota Kijang Innova Zenix Hybrid (AG10) 搭載 第5世代eCVTの操作方法と構造解説',
-    tabControls: '使い方',
-    tabDrivetrain: 'THS Vの仕組み',
-    controlsIntro:
-      '手動運転、リアルなAutoDrive交通シナリオ、または遊星歯車キネマティクス解析を通して、第5世代トヨタハイブリッドシステムをリアルタイムに体感できます。',
-    drivetrainIntro:
-      'トヨタのeCVTはベルトや多段クラッチを使わず、エンジンと2つのモーター発電機（MG1・MG2）を常時直結する単一の遊星歯車機構（Power Split Device / PSD）で無段変速を実現します。',
-    controlsCards: [
-      {
-        badge: '3D ビューポート',
-        title: '視点回転・ズーム・プリセット＆分解表示',
-        body: '3D画面をドラッグで回転、右ドラッグで平行移動、スクロールでズームできます。全体 / PSD / MG1/2 / 車輪で注目部位を切り替え、分解スライダー（0〜100%）で噛み合いを保ったままトランスアクスルを展開できます。',
-      },
-      {
-        badge: '走行タブ',
-        title: 'AutoDrive・EV Mode・ペダル操作',
-        body: 'P / R / N / D / Bシフト操作、EV Mode（SoC 40%以上かつ42 km/h以下）、市街地・高速・山岳のAutoDriveを選択できます。アクセル・ブレーキ・勾配を操作すると即座に手動運転へ切り替わります。',
-      },
-      {
-        badge: 'モード＆手動',
-        title: '10種類の動作モード＆Willis手動ソルバー',
-        body: 'モードタブでは検証済み10モード（Park充電、186 PSデュアルブースト、Bレンジ降坂など）へ即座に移動できます。手動タブでは1軸を自動計算対象に選び、ICE（CWのみ）・MG1（CW/CCW）・MG2のRPMを直接操作できます。',
-      },
-      {
-        badge: '解析ツール',
-        title: '回転速度切替・Auto Slow-Mo・PSDログ＆音声',
-        body: '標準/リアル回転速度切替（電力フロー矢印は一定）、状態変化前後を0.5xにするAuto Slow-Mo、100件のPSD Logと通知バナー、M20A-FXSエンジン＋タイヤ＋EVインバーター音声を利用できます。',
-      },
-    ],
-    drivetrainCards: [
-      {
-        badge: 'PSD キネマティクス',
-        title: '遊星歯車機構（PSD）による無段変速',
-        body: '2.0L M20A-FXSエンジンはキャリア（4×24Tプラネタリ）、MG1はサンギア（30T）、MG2と駆動輪はカウンターシャフト経由でリングギア（78T）に接続。MG1回転数を制御するだけでエンジン回転比を連続的に変化させます。',
-      },
-      {
-        badge: 'トルク分割比',
-        title: '72.2% 機械伝達 / 27.8% 電気パス＆オーバードライブ',
-        body: 'キャリアの反力によりICEトルクの72.2%（78/108）は直結で車輪へ、27.8%（30/108）はMG1へ分配されます。約78 km/h以上の巡航ではMG1が0 RPMを超えてCCW逆転モーターとなり、MG2からの微少電力で高効率オーバードライブに入ります。',
-      },
-      {
-        badge: '燃焼 vs ポンプ',
-        title: '点火燃焼と燃料カットBレンジ制動の違い',
-        body: 'ICEクランク軸はCW（>= 0 RPM）のみ回転可能です。燃焼時は1-3-4-2順で点火発光します。急な下り坂のBレンジや満充電減速時は燃料を完全遮断（0.00 L/h）し、MG1がICEを最大約4,600 RPMの空気ポンプとして回してエネルギーを消費します。',
-      },
-      {
-        badge: 'ZENIX AG10 (2,020 KG)',
-        title: 'Pレンジ vs Nレンジ＆ECB協調回生ブレーキ',
-        body: '成人4名乗車相当のInnova Zenix Hybrid（システム186 PS、1.31 kWh NiMH電池、補機0.9 kW負荷）に適合。Pレンジはインバーター有効でSoC 40%未満時に充電しますが、NレンジではMG1/MG2インバーターが遮断され充電不可となります。ECBブレーキは最大32 kWまでMG2回生を優先し油圧ブレーキと協調します。',
-      },
-    ],
-    willisFormulaNote: 'ウィリスの関係式（常時成立）： 30 · ω_MG1 + 78 · ω_Ring = 108 · ω_ICE',
-    close: '閉じる',
   },
 };

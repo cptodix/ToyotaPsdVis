@@ -15,8 +15,6 @@ export const zh: TranslationDictionary = {
     notifOff: '通知关',
     notifOnTitle: 'PSD 实时切换通知已开启（点击关闭）',
     notifOffTitle: 'PSD 实时切换通知已关闭（点击开启）',
-    howTo: '指南?',
-    howToTitle: '打开模拟器使用指南与丰田 THS V 技术解析',
     languageTitle: '选择界面语言',
   },
   badges: {
@@ -189,61 +187,5 @@ export const zh: TranslationDictionary = {
     empty: '暂无 PSD 切换记录。请尝试驾驶、换挡或拖动手动滑块观察状态变化。',
     whyPrefix: '原理解析：',
     battLabel: '电池',
-  },
-  howToModal: {
-    title: '操作指南与丰田混合动力系统 (THS V)',
-    subtitle: 'Toyota Kijang Innova Zenix Hybrid (AG10) eCVT 交互式使用说明与工程原理',
-    tabControls: '使用指南',
-    tabDrivetrain: 'THS V 原理',
-    controlsIntro:
-      '通过手动驾驶、逼真的 AutoDrive 路况模拟或直接操控行星齿轮运动学，实时探索第五代丰田混合动力系统。',
-    drivetrainIntro:
-      '丰田 eCVT 不采用钢带或阶梯式离合器，而是使用一套行星齿轮组（Power Split Device / PSD）将发动机与两台电机永久机械耦合。',
-    controlsCards: [
-      {
-        badge: '3D 视口',
-        title: '旋转视角、缩放、预设机位与爆炸分解',
-        body: '左键拖拽旋转视角、右键平移、滚轮缩放。点击 全局 / PSD / MG1/2 / 车轮 快速聚焦各总成；拖动 分解（0–100%）可在保持齿轮精确啮合的同时拉开变速驱动桥。',
-      },
-      {
-        badge: '驾驶面板',
-        title: 'AutoDrive、EV Mode 与踏板控制',
-        body: '支持 P / R / N / D / B 换挡、专有 EV Mode（SoC >= 40% 且 <= 42 km/h）以及 城市 / 高速 / 山路 AutoDrive。手动调节油门、刹车或坡度会立即切回手动驾驶。',
-      },
-      {
-        badge: '模式与手动',
-        title: '10 种标定工况与 Willis 实时求解',
-        body: '在 模式 标签可一键进入 10 种经过核验的 THS V 典型工况（从 P 挡充电到 186 PS 双源加速及 B 挡下坡）。在 手动 标签可锁定任意一轴并直接调节 ICE（仅 CW）、MG1 或 MG2 转速。',
-      },
-      {
-        badge: '观察工具',
-        title: '转速比例、Auto Slow-Mo、PSD 日志与声浪',
-        body: '切换 标准 / 真实 机械转速（能量流箭头保持不变），开启 Auto Slow-Mo 在工况切换时自动 0.5x 慢放，查看 100 条 PSD 日志与实时通知，并可开启 M20A-FXS + 胎噪 + EV 逆变器合成音效。',
-      },
-    ],
-    drivetrainCards: [
-      {
-        badge: 'PSD 运动学',
-        title: '行星齿轮功率分流装置与无离合器 eCVT',
-        body: '2.0L M20A-FXS 发动机连接行星架（4×24T 行星轮），MG1 连接 30T 太阳轮，MG2 与车轮经中间轴连接 78T 齿圈。通过无级调节 MG1 转速，即可平滑改变发动机与车轮之间的传动比。',
-      },
-      {
-        badge: '扭矩分配',
-        title: '72.2% 机械直传 / 27.8% 电传与超速挡',
-        body: '行星架受力平衡决定 ICE 扭矩的 72.2%（78/108）直接机械传至车轮，27.8%（30/108）传至 MG1。当巡航车速超过约 78 km/h，MG1 越过零点呈 CCW 反转做功，利用 MG2 少量回馈电能实现高速超速巡航。',
-      },
-      {
-        badge: '做功 vs 反拖气泵',
-        title: '气缸点火做功与断油 B 挡机制',
-        body: 'ICE 曲轴只能沿 CW（>= 0 RPM）旋转。喷油做功时按 1-3-4-2 点火；在陡坡 B 挡滑行或高电量制动时完全断油（0.00 L/h），由 MG1 反拖 ICE 至最高约 4,600 RPM 作为空气泵耗散多余动能。',
-      },
-      {
-        badge: 'ZENIX AG10 (2,020 KG)',
-        title: 'P 挡 vs N 挡区别与 ECB 协同制动',
-        body: '参数对标 4 名成人载荷的 Innova Zenix Hybrid（综合 186 PS、1.31 kWh NiMH 电池、0.9 kW 空调附件负载）。P 挡逆变器保持激活并在 SoC < 40% 时补电；N 挡断开 MG1/MG2 逆变器无法充电。ECB 制动优先使用 MG2 回收最高 32 kW 后再无缝叠加液压制动。',
-      },
-    ],
-    willisFormulaNote: 'Willis 行星运动学恒等式（始终满足）： 30 · ω_MG1 + 78 · ω_Ring = 108 · ω_ICE',
-    close: '知道了',
   },
 };

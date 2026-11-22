@@ -15,8 +15,6 @@ export const id: TranslationDictionary = {
     notifOff: 'Notif Off',
     notifOnTitle: 'Notifikasi Transisi PSD Aktif (klik untuk matikan)',
     notifOffTitle: 'Notifikasi Transisi PSD Nonaktif (klik untuk aktifkan)',
-    howTo: 'Panduan?',
-    howToTitle: 'Buka Panduan Simulator & Referensi Toyota Hybrid (THS V)',
     languageTitle: 'Pilih Bahasa Antarmuka',
   },
   badges: {
@@ -192,62 +190,5 @@ export const id: TranslationDictionary = {
       'Belum ada transisi PSD tercatat. Jalankan mobil, pindah gigi, atau geser slider manual untuk melihat transisi.',
     whyPrefix: 'Penjelasan: ',
     battLabel: 'Baterai',
-  },
-  howToModal: {
-    title: 'Panduan Simulator & Sistem Toyota Hybrid (THS V)',
-    subtitle:
-      'Panduan interaktif dan penjelasan teknik drivetrain eCVT Toyota Kijang Innova Zenix Hybrid (AG10)',
-    tabControls: 'Cara Menggunakan',
-    tabDrivetrain: 'Cara Kerja THS V',
-    controlsIntro:
-      'Jelajahi cara kerja sistem Toyota Hybrid generasi ke-5 secara real-time dengan menyetir manual, mengaktifkan skenario AutoDrive, atau membedah kinematika gir planet.',
-    drivetrainIntro:
-      'Alih-alih sabuk baja (belt) atau kopling bertingkat, eCVT Toyota memakai satu set gir planet (Power Split Device / PSD) yang menghubungkan mesin ICE dan dua motor-generator secara permanen.',
-    controlsCards: [
-      {
-        badge: 'VIEWPORT 3D',
-        title: 'Putar Kamera, Zoom, Preset & Mode Sebar',
-        body: 'Seret area 3D untuk memutar sudut pandang, klik-kanan untuk geser, dan scroll untuk zoom. Gunakan tombol Semua / PSD / MG1/2 / Roda untuk fokus ke tiap komponen, lalu geser Sebar (0–100%) untuk memisahkan komponen transaxle saat berputar.',
-      },
-      {
-        badge: 'TAB KENDARA',
-        title: 'AutoDrive, EV Mode & Pedal Manual',
-        body: 'Pilih transmisi P / R / N / D / B, aktifkan EV Mode (<= 42 km/h bila SoC >= 40%), atau pilih AutoDrive (Kota / Tol / Gunung) untuk simulasi lalu lintas realistis. Menggeser Gas, Rem, atau Tanjakan otomatis mengembalikan kendali ke pengemudi.',
-      },
-      {
-        badge: 'MODE & MANUAL',
-        title: '10 Mode Referensi & Solver Willis Manual',
-        body: 'Buka tab Mode untuk langsung melompat ke 10 skenario resmi THS V (dari Park Charge hingga Power Boost 186 PS atau B-Mode Turunan). Di tab Manual, kunci satu poros dan atur RPM ICE (hanya CW), MG1 (CW/CCW), atau MG2/Roda secara bebas.',
-      },
-      {
-        badge: 'INSPEKSI',
-        title: 'Mode Putaran, Auto Slow-Mo, PSD Log & Suara',
-        body: 'Pilih putaran Normal vs Realistis (kecepatan animasi panah aliran daya tetap sama), aktifkan Auto Slow-Mo untuk perlambatan 0.5x di tiap transisi, pantau PSD Log / Notif langsung, dan nyalakan sintesis audio mesin M20A-FXS + ban + inverter EV.',
-      },
-    ],
-    drivetrainCards: [
-      {
-        badge: 'KINEMATIKA PSD',
-        title: 'Power Split Device & eCVT Tanpa Kopling',
-        body: 'Mesin 2.0L M20A-FXS terhubung ke Carrier (4×24T planet), MG1 ke Sun Gear (30T), sedangkan MG2 & poros roda lewat countershaft ke Ring Gear (78T). Dengan mengatur RPM MG1, rasio antara mesin dan roda berubah mulus tanpa perpindahan gigi.',
-      },
-      {
-        badge: 'PEMBAGIAN TORSI',
-        title: '72,2% Mekanis / 27,8% Listrik & Overdrive',
-        body: 'Geometri gir planet secara permanen menyalurkan 72,2% (78/108) torsi ICE langsung ke roda dan 27,8% (30/108) ke MG1. Saat melaju konstan di atas ~78 km/h, MG1 melewati nol dan berputar CCW sebagai motor balik untuk overdrive tol yang efisien.',
-      },
-      {
-        badge: 'PEMBAKARAN vs POMPA',
-        title: 'Piston Menyala vs Engine Brake B-Range',
-        body: 'Crankshaft ICE hanya boleh berputar CW (>= 0 RPM). Saat membakar BBM, urutan 1-3-4-2 menyalakan piston. Di turunan curam gigi B atau saat baterai penuh, pasokan BBM diputus total (0,00 L/h) sementara MG1 memutar ICE hingga ~4.600 RPM sebagai pompa udara.',
-      },
-      {
-        badge: 'ZENIX AG10 (2.020 KG)',
-        title: 'Park vs Neutral & Pengereman ECB Kooperatif',
-        body: 'Dikalibrasi seperti Innova Zenix Hybrid bermuatan 4 dewasa (186 PS gabungan, baterai NiMH 1,31 kWh, beban A/C + 12V 0,9 kW). Di P, inverter tetap aktif mengisi SoC < 40%; di N, inverter MG1/MG2 mati sehingga tidak bisa mengisi daya. Rem ECB memulihkan energi hingga 32 kW sebelum memadukan rem cakram.',
-      },
-    ],
-    willisFormulaNote: 'Identitas Willis (Selalu Terpenuhi):  30 · ω_MG1 + 78 · ω_Ring = 108 · ω_ICE',
-    close: 'Mengerti',
   },
 };
