@@ -6,9 +6,18 @@
     <strong>5th-Generation Toyota Hybrid System (THS V) · Interactive Physics &amp; Driving Simulator</strong>
   </p>
   <p>
+    <a href="https://toyota-ecvt.vercel.app/" target="_blank" rel="noopener noreferrer">
+      <strong>Live App → https://toyota-ecvt.vercel.app/</strong>
+    </a>
+  </p>
+  <p>
     Calibrated to a <strong>Toyota Kijang Innova Zenix Hybrid (AG10)</strong> with <strong>4 adult passengers (2,020 kg laden mass)</strong>.<br />
     <sub>Three.js WebGL &nbsp;·&nbsp; React &amp; TypeScript &nbsp;·&nbsp; Exact Willis Kinematics &nbsp;·&nbsp; Multi-Language HUD</sub>
   </p>
+  <br />
+  <a href="https://toyota-ecvt.vercel.app/" target="_blank" rel="noopener noreferrer">
+    <img src="public/assets/screenshot.png" alt="Toyota eCVT Power Split Device 3D Visualization Screenshot" width="920" />
+  </a>
 </div>
 
 ---
@@ -87,6 +96,11 @@ src/
 │   └── proceduralTextures.ts
 ├── audio/                  # Web Audio procedural synthesizer (AVAS, MG1/2 whine, ICE, tire)
 │   └── hybridAudioEngine.ts
+├── i18n/                   # Modular UI localization (strictly defaults to English)
+│   ├── locales/            # Isolated language dictionaries (en, id, ja, zh, es)
+│   ├── I18nContext.tsx
+│   ├── index.ts
+│   └── types.ts
 ├── components/             # Presentational React UI & HUD overlays
 │   ├── dock/               # Subcomponents for BottomControlDock
 │   ├── BottomControlDock.tsx
