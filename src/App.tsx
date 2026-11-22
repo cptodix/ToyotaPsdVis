@@ -1,3 +1,4 @@
+import { Analytics } from '@vercel/analytics/react';
 import { BottomControlDock } from './components/BottomControlDock';
 import { PowertrainViewport } from './components/PowertrainViewport';
 import { PsdLogModal } from './components/PsdLogModal';
@@ -67,6 +68,7 @@ export default function App() {
         onClose={() => sim.setLogModalOpen(false)}
         onClear={sim.handleClearLogs}
       />
+      <Analytics />
     </div>
   );
 }
